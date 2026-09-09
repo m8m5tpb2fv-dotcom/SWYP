@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import jwt from "@fastify/jwt";
+import cors from "@fastify/cors";
 import { requireEnv } from "@swyp/config";
 import { authRoutes } from "./routes/auth.js";
 import { meRoutes } from "./routes/me.js";
@@ -8,6 +9,10 @@ import { likeRoutes } from "./routes/likes.js";
 import { commentRoutes } from "./routes/comments.js";
 
 const app = Fastify({ logger: true });
+
+// The Mini App is served from a different origin than the API (Telegram's webview
+// included), so this needs to stay wide open — there's no cookie-based session to protect.
+await app.register(cors, { origin: process.env.CORS_ORIGIN ?? true });
 
 await app.register(jwt, { secret: requireEnv("JWT_SECRET") });
 
