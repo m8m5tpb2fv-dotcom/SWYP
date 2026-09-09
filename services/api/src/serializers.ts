@@ -43,6 +43,24 @@ export function toFeedItem(video: Video & { user: User; likes: { id: string }[] 
   };
 }
 
+export function toAdminVideoItem(video: Video & { user: User }) {
+  return {
+    id: video.id,
+    author: toAuthor(video.user),
+    title: video.title,
+    status: video.status,
+    category: video.category,
+    hashtags: video.hashtags,
+    videoUrl: video.videoUrl,
+    thumbnailUrl: video.thumbnailUrl,
+    viewsCount: video.viewsCount,
+    likesCount: video.likesCount,
+    commentsCount: video.commentsCount,
+    createdAt: video.createdAt,
+    publishedAt: video.publishedAt,
+  };
+}
+
 export function toCommentItem(comment: Comment & { user: User; _count: { replies: number } }) {
   return {
     id: comment.id,

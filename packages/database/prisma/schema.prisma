@@ -28,6 +28,7 @@ model User {
   comments   Comment[]
   followers  Follow[]  @relation("Followers")
   following  Follow[]  @relation("Following")
+  reports    Report[]
 
   @@map("users")
 }
@@ -82,6 +83,7 @@ model Video {
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes    Like[]
   comments Comment[]
+  reports  Report[]
 
   @@index([userId])
   @@index([status])
@@ -125,4 +127,36 @@ model Comment {
   @@index([videoId])
   @@index([parentId])
   @@map("comments")
+}
+
+enum ReportReason {
+  adult
+  violence
+  fraud
+  spam
+  copyright
+  abuse
+  other
+}
+
+enum ReportStatus {
+  open
+  resolved
+  dismissed
+}
+
+model Report {
+  id         String       @id @default(uuid())
+  reporterId String
+  videoId    String
+  reason     ReportReason
+  status     ReportStatus @default(open)
+  createdAt  DateTime     @default(now())
+
+  reporter User  @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  video    Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, videoId])
+  @@index([status])
+  @@map("reports")
 }

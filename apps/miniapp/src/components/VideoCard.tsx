@@ -11,6 +11,7 @@ interface Props {
   onOpenAuthor: (item: FeedItem) => void;
   onOpenComments: (item: FeedItem) => void;
   onShare: (item: FeedItem) => void;
+  onReport: (item: FeedItem) => void;
   registerNode: (node: HTMLDivElement | null) => void;
 }
 
@@ -24,6 +25,7 @@ export default function VideoCard({
   onOpenAuthor,
   onOpenComments,
   onShare,
+  onReport,
   registerNode,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -71,7 +73,7 @@ export default function VideoCard({
       />
 
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-black/10">
-        <div className="pointer-events-auto flex items-end justify-between gap-4 p-4 pb-6">
+        <div className="pointer-events-auto flex items-end justify-between gap-4 p-4 pb-24">
           <div className="min-w-0 flex-1 text-white">
             <button type="button" onClick={() => onOpenAuthor(item)} className="text-sm font-semibold">
               @{authorLabel}
@@ -96,6 +98,9 @@ export default function VideoCard({
             </button>
             <button type="button" onClick={onToggleMute} className="flex flex-col items-center">
               <span className="text-2xl">{muted ? "🔇" : "🔊"}</span>
+            </button>
+            <button type="button" onClick={() => onReport(item)} className="flex flex-col items-center">
+              <span className="text-xl">🚩</span>
             </button>
           </div>
         </div>

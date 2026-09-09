@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import VideoCard from "./VideoCard";
 import CommentsSheet from "./CommentsSheet";
+import ReportSheet from "./ReportSheet";
 import { fetchFeed, likeVideo, unlikeVideo, type FeedItem } from "../lib/feed";
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? "SWYP_bot";
@@ -18,6 +19,7 @@ export default function Feed({ currentUserId, onOpenProfile }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [muted, setMuted] = useState(true);
   const [commentsForId, setCommentsForId] = useState<string | null>(null);
+  const [reportForId, setReportForId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef(new Map<string, HTMLDivElement>());
@@ -180,6 +182,7 @@ export default function Feed({ currentUserId, onOpenProfile }: Props) {
               onOpenAuthor={handleOpenAuthor}
               onOpenComments={(v) => setCommentsForId(v.id)}
               onShare={handleShare}
+              onReport={(v) => setReportForId(v.id)}
               registerNode={(node) => setNodeRef(item.id, node)}
             />
           );
@@ -194,6 +197,8 @@ export default function Feed({ currentUserId, onOpenProfile }: Props) {
           onCountChange={(delta) => handleCommentCountChange(commentsForId, delta)}
         />
       )}
+
+      {reportForId && <ReportSheet videoId={reportForId} onClose={() => setReportForId(null)} />}
     </div>
   );
 }
