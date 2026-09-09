@@ -4,6 +4,7 @@ import { authenticateWithTelegram, type AuthUser } from "./lib/auth";
 import Feed from "./components/Feed";
 import UploadScreen from "./components/UploadScreen";
 import ProfileScreen from "./components/ProfileScreen";
+import SearchScreen from "./components/SearchScreen";
 
 type AuthState =
   | { status: "loading" }
@@ -13,6 +14,7 @@ type AuthState =
 export default function App() {
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [feedKey, setFeedKey] = useState(0);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
 
@@ -50,8 +52,15 @@ export default function App() {
     <div className="relative h-full w-full bg-black">
       <Feed key={feedKey} currentUserId={auth.user.id} onOpenProfile={setViewingUserId} />
 
-      {!uploadOpen && !viewingUserId && (
+      {!uploadOpen && !viewingUserId && !searchOpen && (
         <>
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="absolute left-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-lg text-white shadow-lg backdrop-blur"
+          >
+            🔍
+          </button>
           <button
             type="button"
             onClick={() => setViewingUserId(auth.user.id)}
@@ -78,6 +87,8 @@ export default function App() {
           }}
         />
       )}
+
+      {searchOpen && <SearchScreen onClose={() => setSearchOpen(false)} onOpenProfile={setViewingUserId} />}
 
       {viewingUserId && <ProfileScreen userId={viewingUserId} onClose={() => setViewingUserId(null)} />}
     </div>

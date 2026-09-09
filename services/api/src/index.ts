@@ -9,6 +9,7 @@ import { likeRoutes } from "./routes/likes.js";
 import { commentRoutes } from "./routes/comments.js";
 import { uploadRoutes } from "./routes/uploads.js";
 import { userRoutes } from "./routes/users.js";
+import { searchRoutes } from "./routes/search.js";
 
 const app = Fastify({ logger: true });
 
@@ -27,6 +28,7 @@ await app.register(likeRoutes);
 await app.register(commentRoutes);
 await app.register(uploadRoutes);
 await app.register(userRoutes);
+await app.register(searchRoutes);
 
 const port = Number(process.env.API_PORT ?? 3000);
 

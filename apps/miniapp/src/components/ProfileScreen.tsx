@@ -48,7 +48,7 @@ export default function ProfileScreen({ userId, onClose }: Props) {
   const displayName = profile?.username ?? profile?.firstName ?? "Пользователь";
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col overflow-y-auto bg-black text-white">
+    <div className="absolute inset-0 z-30 flex flex-col overflow-y-auto bg-black text-white">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <span className="text-sm font-semibold">Профиль</span>
         <button type="button" onClick={onClose} className="text-sm text-white/60">
