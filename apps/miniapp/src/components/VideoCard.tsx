@@ -9,6 +9,7 @@ interface Props {
   onToggleMute: () => void;
   onToggleLike: (item: FeedItem) => void;
   onOpenAuthor: (item: FeedItem) => void;
+  onOpenComments: (item: FeedItem) => void;
   onShare: (item: FeedItem) => void;
   registerNode: (node: HTMLDivElement | null) => void;
 }
@@ -21,6 +22,7 @@ export default function VideoCard({
   onToggleMute,
   onToggleLike,
   onOpenAuthor,
+  onOpenComments,
   onShare,
   registerNode,
 }: Props) {
@@ -85,10 +87,10 @@ export default function VideoCard({
               <span className="text-2xl">{item.isLiked ? "❤️" : "🤍"}</span>
               <span className="text-xs">{item.likesCount}</span>
             </button>
-            <div className="flex flex-col items-center">
+            <button type="button" onClick={() => onOpenComments(item)} className="flex flex-col items-center">
               <span className="text-2xl">💬</span>
               <span className="text-xs">{item.commentsCount}</span>
-            </div>
+            </button>
             <button type="button" onClick={() => onShare(item)} className="flex flex-col items-center">
               <span className="text-2xl">🔗</span>
             </button>

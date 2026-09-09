@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import VideoCard from "./VideoCard";
+import CommentsSheet from "./CommentsSheet";
 import { fetchFeed, likeVideo, unlikeVideo, type FeedItem } from "../lib/feed";
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? "SWYP_bot";
 
-export default function Feed() {
+interface Props {
+  currentUserId: string;
+}
+
+export default function Feed({ currentUserId }: Props) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [muted, setMuted] = useState(true);
+  const [commentsForId, setCommentsForId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef(new Map<string, HTMLDivElement>());
@@ -121,6 +127,10 @@ export default function Feed() {
     WebApp.openTelegramLink(shareUrl);
   }, []);
 
+  const handleCommentCountChange = useCallback((videoId: string, delta: number) => {
+    setItems((prev) => prev.map((v) => (v.id === videoId ? { ...v, commentsCount: v.commentsCount + delta } : v)));
+  }, []);
+
   if (loading) {
     return (
       <div className="flex h-full w-full items-center justify-center text-sm text-white/60">
@@ -148,28 +158,40 @@ export default function Feed() {
   const activeIndex = items.findIndex((i) => i.id === activeId);
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full snap-y snap-mandatory overflow-y-scroll"
-      style={{ WebkitOverflowScrolling: "touch" }}
-    >
-      {items.map((item, index) => {
-        const distance = Math.abs(index - (activeIndex === -1 ? 0 : activeIndex));
-        return (
-          <VideoCard
-            key={item.id}
-            item={item}
-            active={item.id === activeId}
-            preload={distance <= 1 ? "auto" : "metadata"}
-            muted={muted}
-            onToggleMute={() => setMuted((m) => !m)}
-            onToggleLike={handleToggleLike}
-            onOpenAuthor={handleOpenAuthor}
-            onShare={handleShare}
-            registerNode={(node) => setNodeRef(item.id, node)}
-          />
-        );
-      })}
+    <div className="relative h-full w-full">
+      <div
+        ref={containerRef}
+        className="h-full w-full snap-y snap-mandatory overflow-y-scroll"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        {items.map((item, index) => {
+          const distance = Math.abs(index - (activeIndex === -1 ? 0 : activeIndex));
+          return (
+            <VideoCard
+              key={item.id}
+              item={item}
+              active={item.id === activeId}
+              preload={distance <= 1 ? "auto" : "metadata"}
+              muted={muted}
+              onToggleMute={() => setMuted((m) => !m)}
+              onToggleLike={handleToggleLike}
+              onOpenAuthor={handleOpenAuthor}
+              onOpenComments={(v) => setCommentsForId(v.id)}
+              onShare={handleShare}
+              registerNode={(node) => setNodeRef(item.id, node)}
+            />
+          );
+        })}
+      </div>
+
+      {commentsForId && (
+        <CommentsSheet
+          videoId={commentsForId}
+          currentUserId={currentUserId}
+          onClose={() => setCommentsForId(null)}
+          onCountChange={(delta) => handleCommentCountChange(commentsForId, delta)}
+        />
+      )}
     </div>
   );
 }
