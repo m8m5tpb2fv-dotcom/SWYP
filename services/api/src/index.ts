@@ -3,6 +3,9 @@ import jwt from "@fastify/jwt";
 import { requireEnv } from "@swyp/config";
 import { authRoutes } from "./routes/auth.js";
 import { meRoutes } from "./routes/me.js";
+import { feedRoutes } from "./routes/feed.js";
+import { likeRoutes } from "./routes/likes.js";
+import { commentRoutes } from "./routes/comments.js";
 
 const app = Fastify({ logger: true });
 
@@ -12,11 +15,12 @@ app.get("/health", async () => ({ status: "ok" }));
 
 await app.register(authRoutes);
 await app.register(meRoutes);
+await app.register(feedRoutes);
+await app.register(likeRoutes);
+await app.register(commentRoutes);
 
-// Route stubs matching ТЗ section 22 — implemented incrementally per MVP stage.
-// GET  /api/feed
+// Route stub matching ТЗ section 22 — implemented once video upload exists.
 // GET  /api/videos/:id
-// POST /api/videos/:id/like
 
 const port = Number(process.env.API_PORT ?? 3000);
 
