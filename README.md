@@ -13,25 +13,27 @@ apps/
 
 services/
   api/                — backend REST API (Fastify)
-  video-worker/       — обработка видео: транскодинг, превью, CDN (BullMQ)
+  video-worker/       — обработка видео: ffmpeg-транскодинг, превью, загрузка в storage (BullMQ)
   analytics-worker/   — агрегация событий просмотра для рекомендаций (BullMQ)
 
 packages/
   database/   — Prisma-схема и клиент (общие для api и воркеров)
+  storage/    — S3-совместимый клиент (presigned URL, чтение/запись объектов)
   types/      — общие TypeScript-типы
   config/     — загрузка переменных окружения
 
 docker/
-  docker-compose.yml — Postgres, Redis, MinIO для локальной разработки
+  docker-compose.yml — Postgres, Redis, MinIO (+ автосоздание бакета) для локальной разработки
 ```
 
-Это каркас проекта (пока без бизнес-логики) — соответствует разделу 37 ТЗ.
-Реализация идёт поэтапно: авторизация → лента → загрузка видео → соц. функции →
-профили → поиск → модерация → рекомендации → аналитика.
+Реализовано: авторизация через Telegram initData, лента со свайпом и infinite scroll,
+лайки, комментарии (bottom sheet), загрузка видео (presigned URL → ffmpeg-обработка →
+публикация в ленте). Дальше по плану: профили, подписки, поиск, модерация, рекомендации,
+аналитика, админка.
 
 ## Разработка
 
-Требуется Node.js 20+ и pnpm.
+Требуется Node.js 20+, pnpm и ffmpeg (для `video-worker`).
 
 ```bash
 pnpm install
@@ -43,4 +45,5 @@ pnpm dev:api        # backend, http://localhost:3000
 pnpm dev:miniapp    # Mini App, http://localhost:5173
 pnpm dev:admin      # админка, http://localhost:5174
 pnpm dev:bot        # Telegram-бот (нужен TELEGRAM_BOT_TOKEN)
+pnpm --filter @swyp/video-worker dev   # обработка загруженных видео
 ```

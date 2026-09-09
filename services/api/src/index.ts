@@ -7,6 +7,7 @@ import { meRoutes } from "./routes/me.js";
 import { feedRoutes } from "./routes/feed.js";
 import { likeRoutes } from "./routes/likes.js";
 import { commentRoutes } from "./routes/comments.js";
+import { uploadRoutes } from "./routes/uploads.js";
 
 const app = Fastify({ logger: true });
 
@@ -23,9 +24,7 @@ await app.register(meRoutes);
 await app.register(feedRoutes);
 await app.register(likeRoutes);
 await app.register(commentRoutes);
-
-// Route stub matching ТЗ section 22 — implemented once video upload exists.
-// GET  /api/videos/:id
+await app.register(uploadRoutes);
 
 const port = Number(process.env.API_PORT ?? 3000);
 

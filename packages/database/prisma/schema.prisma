@@ -47,6 +47,7 @@ model Video {
   category      String?
   hashtags      String[]    @default([])
   status        VideoStatus @default(processing)
+  objectKey     String?     @unique
   videoUrl      String?
   thumbnailUrl  String?
   duration      Int?

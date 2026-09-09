@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import { authenticateWithTelegram, type AuthUser } from "./lib/auth";
 import Feed from "./components/Feed";
+import UploadScreen from "./components/UploadScreen";
 
 type AuthState =
   | { status: "loading" }
@@ -10,6 +11,8 @@ type AuthState =
 
 export default function App() {
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [feedKey, setFeedKey] = useState(0);
 
   useEffect(() => {
     WebApp.ready();
@@ -42,8 +45,28 @@ export default function App() {
   }
 
   return (
-    <div className="h-full w-full bg-black">
-      <Feed currentUserId={auth.user.id} />
+    <div className="relative h-full w-full bg-black">
+      <Feed key={feedKey} currentUserId={auth.user.id} />
+
+      {!uploadOpen && (
+        <button
+          type="button"
+          onClick={() => setUploadOpen(true)}
+          className="absolute bottom-6 right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-2xl text-white shadow-lg"
+        >
+          ＋
+        </button>
+      )}
+
+      {uploadOpen && (
+        <UploadScreen
+          onClose={() => setUploadOpen(false)}
+          onPublished={() => {
+            setUploadOpen(false);
+            setFeedKey((k) => k + 1);
+          }}
+        />
+      )}
     </div>
   );
 }
