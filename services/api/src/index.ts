@@ -38,7 +38,8 @@ await app.register(adminRoutes);
 await app.register(eventRoutes);
 await app.register(shareRoutes);
 
-const port = Number(process.env.API_PORT ?? 3000);
+// PORT is Railway's convention; API_PORT is the local-dev override.
+const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3000);
 
 app.listen({ port, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);
