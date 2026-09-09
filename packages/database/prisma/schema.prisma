@@ -2,7 +2,12 @@
 // section 20 lands incrementally; this step adds Video, Like and Comment.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "native" for local dev; debian-openssl-3.0.x for the node:22-slim (Bookworm)
+  // Docker images used on Railway — without this, the engine binary generated
+  // matches whatever OpenSSL Prisma's heuristic guesses and fails to load at
+  // runtime with "Unable to require ... libquery_engine-*.so.node".
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
