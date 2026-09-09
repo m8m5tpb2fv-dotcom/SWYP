@@ -1,0 +1,12 @@
+// Prisma schema placeholder.
+// Models (users, videos, likes, comments, follows, saves, views, ...) land here
+// as a dedicated step — see ТЗ section 20.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

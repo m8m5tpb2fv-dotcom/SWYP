@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+.turbo/
+.env
+.env.local
+*.log
+*.tsbuildinfo
+.DS_Store
+packages/database/generated/
