@@ -1,6 +1,6 @@
-// Prisma schema placeholder.
-// Models (users, videos, likes, comments, follows, saves, views, ...) land here
-// as a dedicated step — see ТЗ section 20.
+// Prisma schema. Full domain (videos, likes, comments, follows, saves, views, ...)
+// per ТЗ section 20 lands incrementally; User is the first model, needed for
+// Telegram auth to persist accounts.
 
 generator client {
   provider = "prisma-client-js"
@@ -9,4 +9,19 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  telegramId String   @unique
+  username   String?
+  firstName  String?
+  lastName   String?
+  avatarUrl  String?
+  isAdmin    Boolean  @default(false)
+  isBanned   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("users")
 }

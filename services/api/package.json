@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@swyp/config": "workspace:*",
+    "@swyp/database": "workspace:*",
     "@swyp/types": "workspace:*",
+    "@fastify/jwt": "^8.0.1",
     "fastify": "^4.28.1"
   },
   "devDependencies": {
