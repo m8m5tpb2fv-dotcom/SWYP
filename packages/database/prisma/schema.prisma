@@ -17,16 +17,33 @@ model User {
   firstName  String?
   lastName   String?
   avatarUrl  String?
+  bio        String?
   isAdmin    Boolean  @default(false)
   isBanned   Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  videos   Video[]
-  likes    Like[]
-  comments Comment[]
+  videos     Video[]
+  likes      Like[]
+  comments   Comment[]
+  followers  Follow[]  @relation("Followers")
+  following  Follow[]  @relation("Following")
 
   @@map("users")
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
 }
 
 enum VideoStatus {

@@ -8,9 +8,10 @@ const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? "SWYP_bot";
 
 interface Props {
   currentUserId: string;
+  onOpenProfile: (userId: string) => void;
 }
 
-export default function Feed({ currentUserId }: Props) {
+export default function Feed({ currentUserId, onOpenProfile }: Props) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,11 +115,12 @@ export default function Feed({ currentUserId }: Props) {
       });
   }, []);
 
-  const handleOpenAuthor = useCallback((item: FeedItem) => {
-    if (item.author.username) {
-      WebApp.openTelegramLink(`https://t.me/${item.author.username}`);
-    }
-  }, []);
+  const handleOpenAuthor = useCallback(
+    (item: FeedItem) => {
+      onOpenProfile(item.author.id);
+    },
+    [onOpenProfile],
+  );
 
   const handleShare = useCallback((item: FeedItem) => {
     const deepLink = `https://t.me/${BOT_USERNAME}/app?startapp=video_${item.id}`;

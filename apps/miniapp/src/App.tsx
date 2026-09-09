@@ -3,6 +3,7 @@ import WebApp from "@twa-dev/sdk";
 import { authenticateWithTelegram, type AuthUser } from "./lib/auth";
 import Feed from "./components/Feed";
 import UploadScreen from "./components/UploadScreen";
+import ProfileScreen from "./components/ProfileScreen";
 
 type AuthState =
   | { status: "loading" }
@@ -13,6 +14,7 @@ export default function App() {
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
   const [uploadOpen, setUploadOpen] = useState(false);
   const [feedKey, setFeedKey] = useState(0);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     WebApp.ready();
@@ -46,16 +48,25 @@ export default function App() {
 
   return (
     <div className="relative h-full w-full bg-black">
-      <Feed key={feedKey} currentUserId={auth.user.id} />
+      <Feed key={feedKey} currentUserId={auth.user.id} onOpenProfile={setViewingUserId} />
 
-      {!uploadOpen && (
-        <button
-          type="button"
-          onClick={() => setUploadOpen(true)}
-          className="absolute bottom-6 right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-2xl text-white shadow-lg"
-        >
-          ＋
-        </button>
+      {!uploadOpen && !viewingUserId && (
+        <>
+          <button
+            type="button"
+            onClick={() => setViewingUserId(auth.user.id)}
+            className="absolute bottom-6 left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-2xl text-white shadow-lg backdrop-blur"
+          >
+            👤
+          </button>
+          <button
+            type="button"
+            onClick={() => setUploadOpen(true)}
+            className="absolute bottom-6 right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-2xl text-white shadow-lg"
+          >
+            ＋
+          </button>
+        </>
       )}
 
       {uploadOpen && (
@@ -67,6 +78,8 @@ export default function App() {
           }}
         />
       )}
+
+      {viewingUserId && <ProfileScreen userId={viewingUserId} onClose={() => setViewingUserId(null)} />}
     </div>
   );
 }
