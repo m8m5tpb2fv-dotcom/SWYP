@@ -1,15 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { Queue } from "bullmq";
 import { prisma } from "@swyp/database";
 import { getPresignedPutUrl, objectExists } from "@swyp/storage";
 import { authenticate } from "../plugins/authenticate.js";
+import { videoProcessingQueue } from "../queues.js";
 
 const ALLOWED_CONTENT_TYPES = new Set(["video/mp4", "video/quicktime"]);
-
-const videoQueue = new Queue("video-processing", {
-  connection: { url: process.env.REDIS_URL ?? "redis://localhost:6379" },
-});
 
 export async function uploadRoutes(app: FastifyInstance) {
   // ШАГ 11 upload architecture: client gets a presigned PUT URL and pushes bytes
@@ -69,7 +65,7 @@ export async function uploadRoutes(app: FastifyInstance) {
       },
     });
 
-    await videoQueue.add("process", { videoId: id, objectKey: video.objectKey });
+    await videoProcessingQueue.add("process", { videoId: id, objectKey: video.objectKey });
 
     return { id, status: "processing" };
   });

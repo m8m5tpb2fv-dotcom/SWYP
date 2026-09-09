@@ -48,3 +48,7 @@ export function likeVideo(id: string) {
 export function unlikeVideo(id: string) {
   return apiFetch<{ liked: boolean; likesCount: number }>(`/api/videos/${id}/like`, { method: "DELETE" });
 }
+
+export function shareVideo(id: string) {
+  return apiFetch<{ sharesCount: number }>(`/api/videos/${id}/share`, { method: "POST" });
+}

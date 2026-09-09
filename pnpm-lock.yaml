@@ -141,6 +141,9 @@ importers:
 
   services/analytics-worker:
     dependencies:
+      '@swyp/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       bullmq:
         specifier: ^5.13.2
         version: 5.81.4

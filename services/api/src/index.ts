@@ -12,6 +12,8 @@ import { userRoutes } from "./routes/users.js";
 import { searchRoutes } from "./routes/search.js";
 import { reportRoutes } from "./routes/reports.js";
 import { adminRoutes } from "./routes/admin.js";
+import { eventRoutes } from "./routes/events.js";
+import { shareRoutes } from "./routes/shares.js";
 
 const app = Fastify({ logger: true });
 
@@ -33,6 +35,8 @@ await app.register(userRoutes);
 await app.register(searchRoutes);
 await app.register(reportRoutes);
 await app.register(adminRoutes);
+await app.register(eventRoutes);
+await app.register(shareRoutes);
 
 const port = Number(process.env.API_PORT ?? 3000);
 

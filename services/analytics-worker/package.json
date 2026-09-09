@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@swyp/database": "workspace:*",
     "bullmq": "^5.13.2",
     "ioredis": "^5.4.1"
   },

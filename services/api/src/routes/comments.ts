@@ -3,6 +3,7 @@ import { prisma } from "@swyp/database";
 import { authenticate } from "../plugins/authenticate.js";
 import { toCommentItem } from "../serializers.js";
 import { parseLimit } from "../pagination.js";
+import { analyticsQueue } from "../queues.js";
 
 const MAX_TEXT_LENGTH = 2000;
 
@@ -66,6 +67,7 @@ export async function commentRoutes(app: FastifyInstance) {
       prisma.video.update({ where: { id }, data: { commentsCount: { increment: 1 } } }),
     ]);
 
+    await analyticsQueue.add("event", { videoId: id, kind: "recompute" });
     return reply.code(201).send(toCommentItem({ ...comment, _count: { replies: 0 } }));
   });
 
@@ -86,6 +88,7 @@ export async function commentRoutes(app: FastifyInstance) {
       prisma.video.update({ where: { id: comment.videoId }, data: { commentsCount: { decrement: 1 } } }),
     ]);
 
+    await analyticsQueue.add("event", { videoId: comment.videoId, kind: "recompute" });
     return reply.code(204).send();
   });
 }

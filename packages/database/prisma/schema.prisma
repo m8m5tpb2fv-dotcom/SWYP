@@ -23,12 +23,12 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  videos     Video[]
-  likes      Like[]
-  comments   Comment[]
-  followers  Follow[]  @relation("Followers")
-  following  Follow[]  @relation("Following")
-  reports    Report[]
+  videos    Video[]
+  likes     Like[]
+  comments  Comment[]
+  followers Follow[]  @relation("Followers")
+  following Follow[]  @relation("Following")
+  reports   Report[]
 
   @@map("users")
 }
@@ -76,9 +76,18 @@ model Video {
   commentsCount Int         @default(0)
   sharesCount   Int         @default(0)
   savesCount    Int         @default(0)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  publishedAt   DateTime?
+  reportsCount  Int         @default(0)
+
+  // Recommendation inputs (ТЗ раздел 5/21/25) — watchTimeSum/completedViewsCount are
+  // aggregated from video_watch events by the analytics worker; score is recomputed
+  // from all of the above whenever any of them changes.
+  watchTimeSum        Int   @default(0)
+  completedViewsCount Int   @default(0)
+  score               Float @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes    Like[]
@@ -87,6 +96,7 @@ model Video {
 
   @@index([userId])
   @@index([status])
+  @@index([score])
   @@map("videos")
 }
 

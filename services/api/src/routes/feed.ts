@@ -4,8 +4,10 @@ import { authenticate } from "../plugins/authenticate.js";
 import { toFeedItem } from "../serializers.js";
 import { parseLimit } from "../pagination.js";
 
-// GET /api/feed — chronological for now; the score-based ordering from
-// ТЗ раздел 5/31 lands once view/watch-time events are collected.
+// GET /api/feed — ranked by the ТЗ раздел 5 score (recomputed by the analytics
+// worker as watch/like/comment/share/report events land), createdAt as tiebreaker
+// so new videos (score 0 until they get engagement) still show newest-first among
+// themselves. Раздел 31's freshness-decay/exploration blend is future scope.
 export async function feedRoutes(app: FastifyInstance) {
   app.get("/api/feed", { preHandler: authenticate }, async (request) => {
     const { cursor, category } = request.query as { cursor?: string; category?: string };
@@ -14,7 +16,7 @@ export async function feedRoutes(app: FastifyInstance) {
 
     const videos = await prisma.video.findMany({
       where: { status: "published", ...(category ? { category } : {}) },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: [{ score: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {

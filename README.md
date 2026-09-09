@@ -26,10 +26,14 @@ docker/
   docker-compose.yml — Postgres, Redis, MinIO (+ автосоздание бакета) для локальной разработки
 ```
 
-Реализовано: авторизация через Telegram initData, лента со свайпом и infinite scroll,
-лайки, комментарии (bottom sheet), загрузка видео (presigned URL → ffmpeg-обработка →
-публикация в ленте). Дальше по плану: профили, подписки, поиск, модерация, рекомендации,
-аналитика, админка.
+Реализовано: авторизация через Telegram initData; лента со свайпом, infinite scroll и
+ранжированием по score; лайки; комментарии (bottom sheet); загрузка видео (presigned URL →
+ffmpeg-обработка → публикация); профили и подписки; поиск (пользователи/Shorts/хэштеги);
+жалобы и модерация (админ-панель: дашборд, видео, жалобы, пользователи); аналитика
+просмотров (video_impression/video_watch → analytics-worker → пересчёт score по формуле
+из ТЗ раздела 5). Дальше по плану (не входит в MVP выше): полноценная лестница качеств
+видео (360p–1080p), freshness/exploration-подмес к score (раздел 31), сохранённые видео,
+уведомления, монетизация.
 
 ## Разработка
 
@@ -45,5 +49,6 @@ pnpm dev:api        # backend, http://localhost:3000
 pnpm dev:miniapp    # Mini App, http://localhost:5173
 pnpm dev:admin      # админка, http://localhost:5174
 pnpm dev:bot        # Telegram-бот (нужен TELEGRAM_BOT_TOKEN)
-pnpm --filter @swyp/video-worker dev   # обработка загруженных видео
+pnpm --filter @swyp/video-worker dev       # обработка загруженных видео
+pnpm --filter @swyp/analytics-worker dev   # события просмотра → пересчёт score
 ```

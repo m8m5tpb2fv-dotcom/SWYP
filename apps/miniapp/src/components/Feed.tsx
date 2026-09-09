@@ -3,7 +3,8 @@ import WebApp from "@twa-dev/sdk";
 import VideoCard from "./VideoCard";
 import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
-import { fetchFeed, likeVideo, unlikeVideo, type FeedItem } from "../lib/feed";
+import { fetchFeed, likeVideo, unlikeVideo, shareVideo, type FeedItem } from "../lib/feed";
+import { sendImpression, sendWatch } from "../lib/events";
 
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? "SWYP_bot";
 
@@ -26,6 +27,10 @@ export default function Feed({ currentUserId, onOpenProfile }: Props) {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const nextCursorRef = useRef<string | null>(null);
   const fetchingRef = useRef(false);
+  const watchStartRef = useRef<{ id: string; start: number } | null>(null);
+  const impressedRef = useRef(new Set<string>());
+  const itemsRef = useRef<FeedItem[]>([]);
+  itemsRef.current = items;
 
   const loadPage = useCallback(async (cursor?: string) => {
     if (fetchingRef.current) return;
@@ -93,6 +98,40 @@ export default function Feed({ currentUserId, onOpenProfile }: Props) {
     }
   }, [activeId, items, loadPage]);
 
+  // ТЗ раздел 21: video_impression once per video per session, video_watch when
+  // scrolling away — feeds the recommendation score (раздел 5) via the analytics worker.
+  useEffect(() => {
+    const prev = watchStartRef.current;
+    if (prev) {
+      const watchSeconds = (Date.now() - prev.start) / 1000;
+      if (watchSeconds >= 0.5) {
+        const video = itemsRef.current.find((i) => i.id === prev.id);
+        const completed = video?.duration ? watchSeconds >= video.duration * 0.9 : false;
+        sendWatch(prev.id, watchSeconds, completed);
+      }
+    }
+
+    if (activeId) {
+      watchStartRef.current = { id: activeId, start: Date.now() };
+      if (!impressedRef.current.has(activeId)) {
+        impressedRef.current.add(activeId);
+        sendImpression(activeId);
+      }
+    } else {
+      watchStartRef.current = null;
+    }
+  }, [activeId]);
+
+  useEffect(() => {
+    return () => {
+      const prev = watchStartRef.current;
+      if (prev) {
+        const watchSeconds = (Date.now() - prev.start) / 1000;
+        if (watchSeconds >= 0.5) sendWatch(prev.id, watchSeconds, false);
+      }
+    };
+  }, []);
+
   const handleToggleLike = useCallback((item: FeedItem) => {
     const wasLiked = item.isLiked;
     setItems((prev) =>
@@ -129,6 +168,11 @@ export default function Feed({ currentUserId, onOpenProfile }: Props) {
     const text = item.title ? `🔥 Посмотри этот Short: ${item.title}` : "🔥 Посмотри этот Short";
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(deepLink)}&text=${encodeURIComponent(text)}`;
     WebApp.openTelegramLink(shareUrl);
+    shareVideo(item.id)
+      .then((result) => {
+        setItems((prev) => prev.map((v) => (v.id === item.id ? { ...v, sharesCount: result.sharesCount } : v)));
+      })
+      .catch(() => {});
   }, []);
 
   const handleCommentCountChange = useCallback((videoId: string, delta: number) => {

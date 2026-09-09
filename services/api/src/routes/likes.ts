@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { Prisma, prisma } from "@swyp/database";
 import { authenticate } from "../plugins/authenticate.js";
+import { analyticsQueue } from "../queues.js";
 
 export async function likeRoutes(app: FastifyInstance) {
   app.post("/api/videos/:id/like", { preHandler: authenticate }, async (request, reply) => {
@@ -26,6 +27,7 @@ export async function likeRoutes(app: FastifyInstance) {
     }
 
     const updated = await prisma.video.findUniqueOrThrow({ where: { id }, select: { likesCount: true } });
+    await analyticsQueue.add("event", { videoId: id, kind: "recompute" });
     return { liked: true, likesCount: updated.likesCount };
   });
 
@@ -50,6 +52,7 @@ export async function likeRoutes(app: FastifyInstance) {
     }
 
     const updated = await prisma.video.findUniqueOrThrow({ where: { id }, select: { likesCount: true } });
+    await analyticsQueue.add("event", { videoId: id, kind: "recompute" });
     return { liked: false, likesCount: updated.likesCount };
   });
 }
