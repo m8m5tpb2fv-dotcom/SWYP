@@ -27,6 +27,23 @@ export default function App() {
     // app itself to request; older clients just ignore the call.
     WebApp.requestFullscreen?.();
 
+    // In fullscreen mode Telegram draws its own translucent chrome (a collapse
+    // chevron + "..." menu, plus the device status bar) floating over the top
+    // of the page — content/buttons placed at y=0 render underneath it and
+    // are visually clipped and untappable. safeAreaInset covers the device's
+    // own notch/status bar; contentSafeAreaInset covers Telegram's own
+    // floating header on top of that — both are needed, and both can change
+    // (e.g. rotation, entering/leaving fullscreen), so keep them live via
+    // --tg-safe-top for every screen's top bar to pad against.
+    const applyInsets = () => {
+      const top = (WebApp.safeAreaInset?.top ?? 0) + (WebApp.contentSafeAreaInset?.top ?? 0);
+      document.documentElement.style.setProperty("--tg-safe-top", `${top}px`);
+    };
+    applyInsets();
+    WebApp.onEvent("safeAreaChanged", applyInsets);
+    WebApp.onEvent("contentSafeAreaChanged", applyInsets);
+    WebApp.onEvent("fullscreenChanged", applyInsets);
+
     if (!WebApp.initData) {
       setAuth({ status: "error", message: "Открой это приложение через Telegram" });
       return;

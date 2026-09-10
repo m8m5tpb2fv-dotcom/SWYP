@@ -92,7 +92,10 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col overflow-y-auto bg-black text-white">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+      <div
+        className="flex items-center justify-between border-b border-white/10 px-4 pb-3"
+        style={{ paddingTop: "calc(var(--tg-safe-top, 0px) + 0.75rem)" }}
+      >
         <span className="text-sm font-semibold">Профиль</span>
         <button type="button" onClick={onClose} className="text-sm text-white/60">
           Закрыть
@@ -174,7 +177,8 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
           <button
             type="button"
             onClick={() => setOpenIndex(null)}
-            className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white backdrop-blur"
+            className="absolute right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white backdrop-blur"
+            style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
           >
             ✕
           </button>
@@ -182,7 +186,8 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             <button
               type="button"
               onClick={() => setOpenIndex((i) => (i !== null ? i + 1 : i))}
-              className="absolute left-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white backdrop-blur"
+              className="absolute left-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white backdrop-blur"
+              style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
             >
               ↓
             </button>

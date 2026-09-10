@@ -72,43 +72,61 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative flex max-h-[70%] flex-col rounded-t-2xl bg-white text-black">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative flex max-h-[75%] flex-col rounded-t-2xl bg-[#161616] text-white">
+        <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-white/20" />
+
+        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
           <span className="text-sm font-semibold">Комментарии</span>
-          <button type="button" onClick={onClose} className="text-sm text-gray-500">
+          <button type="button" onClick={onClose} className="text-sm text-white/50">
             Закрыть
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
-          {loading && <p className="py-4 text-center text-sm text-gray-400">Загрузка…</p>}
-          {error && <p className="py-4 text-center text-sm text-red-500">{error}</p>}
+          {loading && <p className="py-4 text-center text-sm text-white/40">Загрузка…</p>}
+          {error && <p className="py-4 text-center text-sm text-red-400">{error}</p>}
           {!loading && items.length === 0 && !error && (
-            <p className="py-4 text-center text-sm text-gray-400">Пока нет комментариев</p>
+            <p className="py-8 text-center text-sm text-white/40">
+              Пока нет комментариев.
+              <br />
+              Будь первым!
+            </p>
           )}
-          {items.map((comment) => (
-            <div key={comment.id} className="border-b py-3 last:border-none">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">
-                    {comment.author.username ?? comment.author.firstName ?? "Пользователь"}
-                  </p>
-                  <p className="mt-0.5 text-sm">{comment.text}</p>
-                  {comment.repliesCount > 0 && (
-                    <p className="mt-1 text-xs text-gray-400">{comment.repliesCount} ответ(ов)</p>
+          {items.map((comment) => {
+            const authorLabel = comment.author.username ?? comment.author.firstName ?? "Пользователь";
+            return (
+              <div key={comment.id} className="flex items-start gap-3 border-b border-white/5 py-3 last:border-none">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10 text-sm">
+                  {comment.author.avatarUrl ? (
+                    <img src={comment.author.avatarUrl} alt={authorLabel} className="h-full w-full object-cover" />
+                  ) : (
+                    "👤"
                   )}
                 </div>
-                {comment.author.id === currentUserId && (
-                  <button type="button" onClick={() => handleDelete(comment.id)} className="text-xs text-gray-400">
-                    Удалить
-                  </button>
-                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-semibold text-white/60">{authorLabel}</p>
+                    {comment.author.id === currentUserId && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(comment.id)}
+                        className="shrink-0 text-xs text-white/30"
+                      >
+                        Удалить
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-0.5 break-words text-sm">{comment.text}</p>
+                  {comment.repliesCount > 0 && (
+                    <p className="mt-1 text-xs text-white/40">{comment.repliesCount} ответ(ов)</p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {hasMore && (
-            <button type="button" onClick={handleLoadMore} className="w-full py-2 text-center text-xs text-blue-500">
+            <button type="button" onClick={handleLoadMore} className="w-full py-3 text-center text-xs text-blue-400">
               Загрузить ещё
             </button>
           )}
@@ -116,19 +134,20 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
 
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2 border-t px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
+          className="flex shrink-0 items-center gap-2 border-t border-white/10 px-3 pt-3"
+          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         >
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Написать комментарий…"
-            className="flex-1 rounded-full border px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-full bg-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-blue-500"
             maxLength={2000}
           />
           <button
             type="submit"
             disabled={posting || !text.trim()}
-            className="text-sm font-semibold text-blue-500 disabled:text-gray-300"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-sm text-white disabled:bg-white/10 disabled:text-white/30"
           >
             ➤
           </button>

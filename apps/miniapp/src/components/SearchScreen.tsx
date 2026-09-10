@@ -37,7 +37,10 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col bg-black text-white">
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+      <div
+        className="flex items-center gap-2 border-b border-white/10 px-4 pb-3"
+        style={{ paddingTop: "calc(var(--tg-safe-top, 0px) + 0.75rem)" }}
+      >
         <input
           autoFocus
           value={query}

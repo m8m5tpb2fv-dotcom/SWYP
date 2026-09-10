@@ -90,7 +90,10 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col bg-black text-white">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+      <div
+        className="flex items-center justify-between border-b border-white/10 px-4 pb-3"
+        style={{ paddingTop: "calc(var(--tg-safe-top, 0px) + 0.75rem)" }}
+      >
         <span className="text-sm font-semibold">Создать Short</span>
         <button type="button" onClick={onClose} className="text-sm text-white/60">
           Закрыть
