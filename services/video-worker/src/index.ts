@@ -5,7 +5,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { prisma } from "@swyp/database";
-import { getObjectBytes, putObjectFile, publicUrl } from "@swyp/storage";
+import { getObjectBytes, putObjectFile } from "@swyp/storage";
 
 const execFileAsync = promisify(execFile);
 
@@ -66,12 +66,15 @@ async function processVideo(videoId: string, objectKey: string) {
     await putObjectFile(videoKey, outputPath, "video/mp4");
     await putObjectFile(thumbKey, thumbPath, "image/jpeg");
 
+    // videoUrl/thumbnailUrl hold object keys, not public links — the bucket is
+    // private, so the API signs a time-limited GET URL per request (see
+    // toVideoUrls in services/api/src/serializers.ts) rather than storing one.
     await prisma.video.update({
       where: { id: videoId },
       data: {
         status: "published",
-        videoUrl: publicUrl(videoKey),
-        thumbnailUrl: publicUrl(thumbKey),
+        videoUrl: videoKey,
+        thumbnailUrl: thumbKey,
         width: stream.width ?? null,
         height: stream.height ?? null,
         duration: stream.duration ? Math.round(Number(stream.duration)) : null,

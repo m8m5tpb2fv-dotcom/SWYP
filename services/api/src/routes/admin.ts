@@ -67,7 +67,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const items = videos.slice(0, limit);
 
     return {
-      items: items.map(toAdminVideoItem),
+      items: await Promise.all(items.map(toAdminVideoItem)),
       next_cursor: hasMore ? items[items.length - 1].id : null,
     };
   });

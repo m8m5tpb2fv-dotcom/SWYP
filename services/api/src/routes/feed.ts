@@ -29,7 +29,7 @@ export async function feedRoutes(app: FastifyInstance) {
     const items = videos.slice(0, limit);
 
     return {
-      items: items.map(toFeedItem),
+      items: await Promise.all(items.map(toFeedItem)),
       next_cursor: hasMore ? items[items.length - 1].id : null,
     };
   });

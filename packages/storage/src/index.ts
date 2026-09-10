@@ -15,11 +15,12 @@ function requireEnv(name: string): string {
 
 const bucket = () => requireEnv("STORAGE_BUCKET");
 
-// S3-compatible: works against MinIO/R2/S3 alike (ТЗ раздел 10/11).
+// S3-compatible: works against MinIO (path-style) or Railway/Tigris buckets
+// (virtual-host style) alike — ТЗ раздел 10/11.
 export const s3 = new S3Client({
   endpoint: requireEnv("STORAGE_ENDPOINT"),
-  region: process.env.STORAGE_REGION ?? "us-east-1",
-  forcePathStyle: true,
+  region: process.env.STORAGE_REGION ?? "auto",
+  forcePathStyle: (process.env.STORAGE_FORCE_PATH_STYLE ?? "true") === "true",
   credentials: {
     accessKeyId: requireEnv("STORAGE_ACCESS_KEY"),
     secretAccessKey: requireEnv("STORAGE_SECRET_KEY"),
@@ -28,6 +29,14 @@ export const s3 = new S3Client({
 
 export function getPresignedPutUrl(key: string, contentType: string, expiresInSeconds = 900) {
   const command = new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: contentType });
+  return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
+}
+
+// Video/thumbnail buckets are private by default (no public-read ACL on Railway's
+// bucket), so serving playable URLs means signing a GET at read time rather than
+// storing a permanent public link — see toVideoUrls() in services/api/src/serializers.ts.
+export function getPresignedGetUrl(key: string, expiresInSeconds = 6 * 60 * 60) {
+  const command = new GetObjectCommand({ Bucket: bucket(), Key: key });
   return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 }
 
@@ -58,11 +67,4 @@ export async function putObjectFile(key: string, filePath: string, contentType: 
       ContentType: contentType,
     }),
   );
-}
-
-// The dev bucket is served directly by MinIO with anonymous read; production points
-// CDN_BASE_URL at the real CDN in front of the bucket.
-export function publicUrl(key: string): string {
-  const base = process.env.CDN_BASE_URL ?? `${requireEnv("STORAGE_ENDPOINT")}/${bucket()}`;
-  return `${base.replace(/\/$/, "")}/${key}`;
 }

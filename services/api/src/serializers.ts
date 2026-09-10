@@ -1,4 +1,5 @@
 import type { Comment, User, Video } from "@swyp/database";
+import { getPresignedGetUrl } from "@swyp/storage";
 
 export function toPublicUser(user: User) {
   return {
@@ -21,7 +22,19 @@ export function toAuthor(user: User) {
   };
 }
 
-export function toFeedItem(video: Video & { user: User; likes: { id: string }[] }) {
+// videoUrl/thumbnailUrl on the Video row hold object keys (the bucket is private —
+// see services/video-worker/src/index.ts), so every response signs a fresh
+// time-limited GET URL rather than returning a permanent link.
+async function toVideoUrls(video: Pick<Video, "videoUrl" | "thumbnailUrl">) {
+  const [videoUrl, thumbnailUrl] = await Promise.all([
+    video.videoUrl ? getPresignedGetUrl(video.videoUrl) : Promise.resolve(null),
+    video.thumbnailUrl ? getPresignedGetUrl(video.thumbnailUrl) : Promise.resolve(null),
+  ]);
+  return { videoUrl, thumbnailUrl };
+}
+
+export async function toFeedItem(video: Video & { user: User; likes: { id: string }[] }) {
+  const urls = await toVideoUrls(video);
   return {
     id: video.id,
     author: toAuthor(video.user),
@@ -29,8 +42,7 @@ export function toFeedItem(video: Video & { user: User; likes: { id: string }[] 
     description: video.description,
     category: video.category,
     hashtags: video.hashtags,
-    videoUrl: video.videoUrl,
-    thumbnailUrl: video.thumbnailUrl,
+    ...urls,
     duration: video.duration,
     viewsCount: video.viewsCount,
     likesCount: video.likesCount,
@@ -43,7 +55,8 @@ export function toFeedItem(video: Video & { user: User; likes: { id: string }[] 
   };
 }
 
-export function toAdminVideoItem(video: Video & { user: User }) {
+export async function toAdminVideoItem(video: Video & { user: User }) {
+  const urls = await toVideoUrls(video);
   return {
     id: video.id,
     author: toAuthor(video.user),
@@ -51,8 +64,7 @@ export function toAdminVideoItem(video: Video & { user: User }) {
     status: video.status,
     category: video.category,
     hashtags: video.hashtags,
-    videoUrl: video.videoUrl,
-    thumbnailUrl: video.thumbnailUrl,
+    ...urls,
     viewsCount: video.viewsCount,
     likesCount: video.likesCount,
     commentsCount: video.commentsCount,

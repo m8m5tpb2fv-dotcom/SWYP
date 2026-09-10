@@ -1,4 +1,4 @@
-import { bucket, defineRailway, github, postgres, project, redis, service } from "railway/iac";
+import { bucket, defineRailway, github, postgres, preserve, project, redis, service } from "railway/iac";
 
 const REPO = "m8m5tpb2fv-dotcom/swyp";
 const BRANCH = "claude/hello-ntyrhn";
@@ -20,18 +20,25 @@ export default defineRailway((ctx) => {
     healthcheck: "/health",
     env: {
       NODE_ENV: "production",
+      // Railway's healthcheck prober reads this to know which port to probe —
+      // without it the deployment never leaves DEPLOYING, no matter what the
+      // app itself listens on.
+      PORT: "3000",
       DATABASE_URL: db.env.DATABASE_URL,
       REDIS_URL: cache.env.REDIS_URL,
       JWT_SECRET: jwtSecret,
       ADMIN_USERNAME: "admin",
       ADMIN_PASSWORD: adminPassword,
-      // Filled in after the bucket + domains exist — see DEPLOY.md step 2/3.
-      TELEGRAM_BOT_TOKEN: "unset",
-      STORAGE_ENDPOINT: "unset",
-      STORAGE_BUCKET: "videos",
-      STORAGE_ACCESS_KEY: "unset",
-      STORAGE_SECRET_KEY: "unset",
-      CDN_BASE_URL: "unset",
+      // Bucket credentials aren't referenceable via the IaC graph yet (BucketNode
+      // has no .env) — set once with `railway variable set`, preserve() here so a
+      // future `config apply` doesn't overwrite them back to nothing.
+      STORAGE_ENDPOINT: preserve(),
+      STORAGE_BUCKET: preserve(),
+      STORAGE_ACCESS_KEY: preserve(),
+      STORAGE_SECRET_KEY: preserve(),
+      STORAGE_FORCE_PATH_STYLE: "false",
+      // Real value only known once @BotFather issues it — set via `railway variable set`.
+      TELEGRAM_BOT_TOKEN: preserve(),
     },
   });
 
@@ -42,11 +49,11 @@ export default defineRailway((ctx) => {
       NODE_ENV: "production",
       DATABASE_URL: db.env.DATABASE_URL,
       REDIS_URL: cache.env.REDIS_URL,
-      STORAGE_ENDPOINT: "unset",
-      STORAGE_BUCKET: "videos",
-      STORAGE_ACCESS_KEY: "unset",
-      STORAGE_SECRET_KEY: "unset",
-      CDN_BASE_URL: "unset",
+      STORAGE_ENDPOINT: preserve(),
+      STORAGE_BUCKET: preserve(),
+      STORAGE_ACCESS_KEY: preserve(),
+      STORAGE_SECRET_KEY: preserve(),
+      STORAGE_FORCE_PATH_STYLE: "false",
     },
   });
 
@@ -68,8 +75,9 @@ export default defineRailway((ctx) => {
     start: "npm start",
     env: {
       NODE_ENV: "production",
-      TELEGRAM_BOT_TOKEN: "unset",
-      MINIAPP_URL: "unset",
+      TELEGRAM_BOT_TOKEN: preserve(),
+      // The Mini App's public domain — set via `railway variable set` once it exists.
+      MINIAPP_URL: preserve(),
     },
   });
 
@@ -78,8 +86,11 @@ export default defineRailway((ctx) => {
     build: "npm install && npm run build",
     start: "npx --yes serve -s dist -l $PORT",
     env: {
-      VITE_API_URL: "unset",
-      VITE_BOT_USERNAME: "unset",
+      PORT: "3000",
+      // Vite bakes these in at build time — set via `railway variable set` once
+      // the api service's public domain exists, then redeploy to rebuild.
+      VITE_API_URL: preserve(),
+      VITE_BOT_USERNAME: preserve(),
     },
   });
 
@@ -88,7 +99,8 @@ export default defineRailway((ctx) => {
     build: "npm install && npm run build",
     start: "npx --yes serve -s dist -l $PORT",
     env: {
-      VITE_API_URL: "unset",
+      PORT: "3000",
+      VITE_API_URL: preserve(),
     },
   });
 

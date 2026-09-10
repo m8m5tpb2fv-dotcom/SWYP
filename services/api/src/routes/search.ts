@@ -52,7 +52,7 @@ export async function searchRoutes(app: FastifyInstance) {
     ]);
 
     return {
-      videos: videos.map(toFeedItem),
+      videos: await Promise.all(videos.map(toFeedItem)),
       users: users.map(toAuthor),
       hashtags: hashtagRows.map((r) => ({ tag: r.tag, count: Number(r.count) })),
     };
