@@ -9,10 +9,12 @@ interface Props {
   preload: "auto" | "metadata" | "none";
   muted: boolean;
   onOpenAuthor: (item: FeedItem) => void;
-  // Optional: only Feed passes this (App's "jump to my own profile" action).
-  // Lives here next to the author's name rather than as its own satellite
-  // button in VideoActionBar — one less floating circle on screen.
+  // Optional: only Feed passes these (App's "jump to my own profile" action
+  // + the viewer's own avatar). Lives here as an avatar leading the author's
+  // name rather than as its own satellite button in VideoActionBar — one
+  // less floating circle on screen.
   onOpenOwnProfile?: () => void;
+  currentUserAvatarUrl?: string | null;
   registerNode: (node: HTMLDivElement | null) => void;
 }
 
@@ -25,6 +27,7 @@ export default function VideoCard({
   muted,
   onOpenAuthor,
   onOpenOwnProfile,
+  currentUserAvatarUrl,
   registerNode,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -75,19 +78,23 @@ export default function VideoCard({
         <div className="pointer-events-auto p-4 pb-28" style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}>
           <div className="min-w-0 max-w-[75%] text-white">
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => onOpenAuthor(item)} className="text-sm font-semibold">
-                @{authorLabel}
-              </button>
               {onOpenOwnProfile && (
                 <button
                   type="button"
                   onClick={onOpenOwnProfile}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10"
                   aria-label="Мой профиль"
                 >
-                  <UserRound size={13} strokeWidth={2} />
+                  {currentUserAvatarUrl ? (
+                    <img src={currentUserAvatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <UserRound size={13} strokeWidth={2} />
+                  )}
                 </button>
               )}
+              <button type="button" onClick={() => onOpenAuthor(item)} className="text-sm font-semibold">
+                @{authorLabel}
+              </button>
             </div>
             {item.title && <p className="mt-1 line-clamp-2 text-sm">{item.title}</p>}
             {item.hashtags.length > 0 && (

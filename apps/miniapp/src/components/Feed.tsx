@@ -13,9 +13,17 @@ interface Props {
   onOpenSearch: () => void;
   onOpenUpload: () => void;
   onOpenOwnProfile: () => void;
+  currentUserAvatarUrl: string | null;
 }
 
-export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpenUpload, onOpenOwnProfile }: Props) {
+export default function Feed({
+  currentUserId,
+  onOpenProfile,
+  onOpenSearch,
+  onOpenUpload,
+  onOpenOwnProfile,
+  currentUserAvatarUrl,
+}: Props) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -192,6 +200,7 @@ export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpe
               muted={muted}
               onOpenAuthor={handleOpenAuthor}
               onOpenOwnProfile={onOpenOwnProfile}
+              currentUserAvatarUrl={currentUserAvatarUrl}
               registerNode={(node) => setNodeRef(item.id, node)}
             />
           );
