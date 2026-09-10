@@ -1,5 +1,5 @@
 import WebApp from "@twa-dev/sdk";
-import { MessageCircle, Heart, Link2, Volume2, VolumeX, Flag, Search, Plus, Download } from "lucide-react";
+import { MessageCircle, Heart, Link2, Volume2, VolumeX, Flag, Search, UserRound, Plus, Download } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
 
 interface NavProps {
@@ -15,18 +15,15 @@ interface Props {
   onOpenComments: (item: FeedItem) => void;
   onShare: (item: FeedItem) => void;
   onReport: (item: FeedItem) => void;
+  onOpenOwnProfile?: () => void;
   nav?: NavProps;
 }
 
-// Floating pill bottom bar, styled after Telegram's own tab bar (frosted glass,
-// rounded, floating above content) — replaces the old TikTok-style right-edge
-// vertical stack so every control sits within one-handed thumb reach at the
-// bottom of the screen, with Like as the elevated, centered focal action.
-//
-// Uses lucide SVG icons rather than emoji: emoji glyphs render at wildly
-// different sizes/bounding boxes across platforms (Android's system emoji in
-// particular render much larger than the reserved box), which visually
-// clipped icons against their containers — SVGs render identically everywhere.
+// Order: comments, share, download, like (elevated focal action), own
+// profile, mute, report — per explicit spec. Search/upload aren't part of
+// this row at all — they're fixed corner buttons (top-left/top-right),
+// padded against --tg-safe-top the same way every other screen's top bar
+// is (see App.tsx) so they don't sit under Telegram's fullscreen chrome.
 export default function VideoActionBar({
   item,
   muted,
@@ -35,6 +32,7 @@ export default function VideoActionBar({
   onOpenComments,
   onShare,
   onReport,
+  onOpenOwnProfile,
   nav,
 }: Props) {
   const handleDownload = () => {
@@ -46,79 +44,87 @@ export default function VideoActionBar({
   };
 
   return (
-    <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-center gap-1.5 px-2"
-      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-    >
+    <>
       {nav && (
         <button
           type="button"
           onClick={nav.onSearch}
-          className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur-xl"
+          className="pointer-events-auto absolute left-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur-xl"
+          style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
         >
           <Search size={18} strokeWidth={2} />
         </button>
       )}
 
-      {/* Every control sits in a fixed-width slot (w-8/w-9) so the gaps between
-          icons read as even, regardless of how wide each glyph's own bounding
-          box happens to be — spacing came from per-button padding before,
-          which made icons of different visual widths look unevenly spaced.
-          min-w-0 lets the row shrink below its content's natural width (flex
-          items default to min-width:auto, which would otherwise force the
-          whole row wider than the screen on narrow devices); overflow-x-auto
-          turns that into a horizontal scroll instead of clipping off-screen. */}
-      <div className="pointer-events-auto flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-white/10 bg-black/40 px-1.5 py-2 backdrop-blur-xl">
-        <button
-          type="button"
-          onClick={() => onOpenComments(item)}
-          className="flex w-8 shrink-0 flex-col items-center gap-0.5 text-white"
-        >
-          <MessageCircle size={19} strokeWidth={2} />
-          <span className="text-[10px] leading-none text-white/70">{item.commentsCount}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onToggleLike(item)}
-          className="-mt-2.5 flex w-12 shrink-0 flex-col items-center gap-0.5"
-        >
-          <div
-            className={`flex h-11 w-11 items-center justify-center rounded-full border-[3px] border-black/50 shadow-lg ${
-              item.isLiked ? "bg-red-500" : "bg-blue-500"
-            }`}
-          >
-            <Heart size={21} strokeWidth={2} fill={item.isLiked ? "white" : "none"} className="text-white" />
-          </div>
-          <span className="text-[10px] leading-none text-white/70">{item.likesCount}</span>
-        </button>
-
-        <button type="button" onClick={() => onShare(item)} className="flex w-8 shrink-0 flex-col items-center text-white">
-          <Link2 size={19} strokeWidth={2} />
-        </button>
-
-        <button type="button" onClick={handleDownload} className="flex w-8 shrink-0 flex-col items-center text-white">
-          <Download size={19} strokeWidth={2} />
-        </button>
-
-        <button type="button" onClick={onToggleMute} className="flex w-8 shrink-0 flex-col items-center text-white">
-          {muted ? <VolumeX size={19} strokeWidth={2} /> : <Volume2 size={19} strokeWidth={2} />}
-        </button>
-
-        <button type="button" onClick={() => onReport(item)} className="flex w-8 shrink-0 flex-col items-center text-white">
-          <Flag size={17} strokeWidth={2} />
-        </button>
-      </div>
-
       {nav && (
         <button
           type="button"
           onClick={nav.onUpload}
-          className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg"
+          className="pointer-events-auto absolute right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg"
+          style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
         >
           <Plus size={22} strokeWidth={2.5} />
         </button>
       )}
-    </div>
+
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-2"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        {/* Every control sits in a fixed-width slot so gaps read as even
+            regardless of each glyph's own bounding-box width. min-w-0 lets the
+            row shrink below its content's natural width (flex items default to
+            min-width:auto, which would otherwise force it wider than the
+            screen on narrow devices); overflow-x-auto turns that into a
+            horizontal scroll instead of clipping off-screen. */}
+        <div className="pointer-events-auto flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-full border border-white/10 bg-black/40 px-1.5 py-2 backdrop-blur-xl">
+          <button
+            type="button"
+            onClick={() => onOpenComments(item)}
+            className="flex w-8 shrink-0 flex-col items-center gap-0.5 text-white"
+          >
+            <MessageCircle size={19} strokeWidth={2} />
+            <span className="text-[10px] leading-none text-white/70">{item.commentsCount}</span>
+          </button>
+
+          <button type="button" onClick={() => onShare(item)} className="flex w-8 shrink-0 flex-col items-center text-white">
+            <Link2 size={19} strokeWidth={2} />
+          </button>
+
+          <button type="button" onClick={handleDownload} className="flex w-8 shrink-0 flex-col items-center text-white">
+            <Download size={19} strokeWidth={2} />
+          </button>
+
+          {/* Always blue — liked state shows as a filled (vs outline) heart
+              rather than a color change, since the design calls for the
+              button itself to stay blue. Count sits inside the same round
+              badge as the heart rather than as a separate label below it. */}
+          <button
+            type="button"
+            onClick={() => onToggleLike(item)}
+            className="-mt-2.5 flex w-12 shrink-0 flex-col items-center"
+          >
+            <div className="flex h-12 w-12 flex-col items-center justify-center rounded-full border-[3px] border-black/50 bg-blue-500 shadow-lg">
+              <Heart size={18} strokeWidth={2} fill={item.isLiked ? "white" : "none"} className="text-white" />
+              <span className="text-[10px] font-semibold leading-none text-white">{item.likesCount}</span>
+            </div>
+          </button>
+
+          {onOpenOwnProfile && (
+            <button type="button" onClick={onOpenOwnProfile} className="flex w-8 shrink-0 flex-col items-center text-white">
+              <UserRound size={19} strokeWidth={2} />
+            </button>
+          )}
+
+          <button type="button" onClick={onToggleMute} className="flex w-8 shrink-0 flex-col items-center text-white">
+            {muted ? <VolumeX size={19} strokeWidth={2} /> : <Volume2 size={19} strokeWidth={2} />}
+          </button>
+
+          <button type="button" onClick={() => onReport(item)} className="flex w-8 shrink-0 flex-col items-center text-white">
+            <Flag size={17} strokeWidth={2} />
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

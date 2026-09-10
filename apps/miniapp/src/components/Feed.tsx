@@ -12,9 +12,10 @@ interface Props {
   onOpenProfile: (userId: string) => void;
   onOpenSearch: () => void;
   onOpenUpload: () => void;
+  onOpenOwnProfile: () => void;
 }
 
-export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpenUpload }: Props) {
+export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpenUpload, onOpenOwnProfile }: Props) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +206,7 @@ export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpe
           onOpenComments={(v) => setCommentsForId(v.id)}
           onShare={handleShare}
           onReport={(v) => setReportForId(v.id)}
+          onOpenOwnProfile={onOpenOwnProfile}
           nav={{ onSearch: onOpenSearch, onUpload: onOpenUpload }}
         />
       )}

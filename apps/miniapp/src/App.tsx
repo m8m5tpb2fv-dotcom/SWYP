@@ -95,6 +95,7 @@ export default function App() {
         onOpenProfile={setViewingUserId}
         onOpenSearch={() => setSearchOpen(true)}
         onOpenUpload={() => setUploadOpen(true)}
+        onOpenOwnProfile={() => setViewingUserId(auth.user.id)}
       />
 
       {uploadOpen && (
