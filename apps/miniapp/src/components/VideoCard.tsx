@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Eye, UserRound } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Eye, Play, UserRound } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
 import { formatCount } from "../lib/format";
 
@@ -16,6 +16,11 @@ interface Props {
 // VideoActionBar, the floating bottom bar rendered alongside this card.
 export default function VideoCard({ item, active, preload, muted, onOpenAuthor, registerNode }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Tracks the <video>'s actual paused state (via its own play/pause events,
+  // not just the tap handler) so the overlay icon also shows up correctly
+  // when playback is blocked by autoplay policy or paused by the active-card
+  // effect below — not only on a manual tap.
+  const [paused, setPaused] = useState(true);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -57,7 +62,19 @@ export default function VideoCard({ item, active, preload, muted, onOpenAuthor, 
         muted={muted}
         preload={preload}
         onClick={handleTap}
+        onPlay={() => setPaused(false)}
+        onPause={() => setPaused(true)}
       />
+
+      <div
+        className={`pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+          paused ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#2AABEE] shadow-xl">
+          <Play size={30} strokeWidth={0} fill="white" className="ml-1" />
+        </div>
+      </div>
 
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-black/10">
         <div className="pointer-events-auto p-4 pb-28" style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}>

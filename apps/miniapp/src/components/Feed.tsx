@@ -13,9 +13,21 @@ interface Props {
   onOpenSearch: () => void;
   onOpenUpload: () => void;
   onOpenOwnProfile: () => void;
+  // Video opened via a t.me share deep link (App.tsx resolves start_param
+  // before Feed ever mounts) — pinned to the front of the first page so the
+  // recipient lands on it and can immediately keep swiping the real feed,
+  // instead of a separate single-video screen blocking further scrolling.
+  initialVideo?: FeedItem | null;
 }
 
-export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpenUpload, onOpenOwnProfile }: Props) {
+export default function Feed({
+  currentUserId,
+  onOpenProfile,
+  onOpenSearch,
+  onOpenUpload,
+  onOpenOwnProfile,
+  initialVideo,
+}: Props) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +52,11 @@ export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpe
     setLoading((prev) => prev && !cursor);
     try {
       const page = await fetchFeed({ cursor });
-      setItems((prev) => (cursor ? [...prev, ...page.items] : page.items));
+      let pageItems = page.items;
+      if (!cursor && initialVideo) {
+        pageItems = [initialVideo, ...pageItems.filter((i) => i.id !== initialVideo.id)];
+      }
+      setItems((prev) => (cursor ? [...prev, ...pageItems] : pageItems));
       nextCursorRef.current = page.next_cursor;
       setError(null);
     } catch (err) {
@@ -49,7 +65,7 @@ export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpe
       fetchingRef.current = false;
       setLoading(false);
     }
-  }, []);
+  }, [initialVideo]);
 
   useEffect(() => {
     loadPage();

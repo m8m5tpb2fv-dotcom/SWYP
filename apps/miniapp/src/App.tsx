@@ -6,7 +6,6 @@ import Feed from "./components/Feed";
 import UploadScreen from "./components/UploadScreen";
 import ProfileScreen from "./components/ProfileScreen";
 import SearchScreen from "./components/SearchScreen";
-import SharedVideoScreen from "./components/SharedVideoScreen";
 import SplashScreen from "./components/SplashScreen";
 
 type AuthState =
@@ -21,6 +20,7 @@ export default function App() {
   const [feedKey, setFeedKey] = useState(0);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [sharedVideo, setSharedVideo] = useState<FeedItem | null>(null);
+  const [sharedVideoResolved, setSharedVideoResolved] = useState(false);
 
   useEffect(() => {
     WebApp.ready();
@@ -59,20 +59,26 @@ export default function App() {
   }, []);
 
   // Resolve a share deep link's start_param (t.me/<bot>/<app>?startapp=video_<id>,
-  // set by useVideoInteractions' handleShare) to open that video directly instead
-  // of landing on the normal feed — silently falls back to the feed if the video
-  // was deleted/unpublished since it was shared, or the param doesn't match.
+  // set by useVideoInteractions' handleShare) before Feed ever mounts, so the
+  // shared video can be pinned to the front of the first feed page instead of
+  // blocking behind a separate single-video screen — the recipient lands on it
+  // and can keep swiping immediately. Falls back to the normal feed if the
+  // video was deleted/unpublished since it was shared, or the param doesn't match.
   useEffect(() => {
     if (auth.status !== "authenticated") return;
     const startParam = WebApp.initDataUnsafe.start_param;
     const match = startParam?.match(/^video_(.+)$/);
-    if (!match) return;
+    if (!match) {
+      setSharedVideoResolved(true);
+      return;
+    }
     fetchVideoById(match[1])
       .then(setSharedVideo)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setSharedVideoResolved(true));
   }, [auth.status]);
 
-  if (auth.status === "loading") {
+  if (auth.status === "loading" || (auth.status === "authenticated" && !sharedVideoResolved)) {
     return <SplashScreen />;
   }
 
@@ -93,6 +99,7 @@ export default function App() {
         onOpenSearch={() => setSearchOpen(true)}
         onOpenUpload={() => setUploadOpen(true)}
         onOpenOwnProfile={() => setViewingUserId(auth.user.id)}
+        initialVideo={sharedVideo}
       />
 
       {uploadOpen && (
@@ -109,10 +116,6 @@ export default function App() {
 
       {viewingUserId && (
         <ProfileScreen userId={viewingUserId} currentUserId={auth.user.id} onClose={() => setViewingUserId(null)} />
-      )}
-
-      {sharedVideo && (
-        <SharedVideoScreen video={sharedVideo} currentUserId={auth.user.id} onClose={() => setSharedVideo(null)} />
       )}
     </div>
   );
