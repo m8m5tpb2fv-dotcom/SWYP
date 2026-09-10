@@ -191,6 +191,7 @@ export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpe
               preload={distance <= 1 ? "auto" : "metadata"}
               muted={muted}
               onOpenAuthor={handleOpenAuthor}
+              onOpenOwnProfile={onOpenOwnProfile}
               registerNode={(node) => setNodeRef(item.id, node)}
             />
           );
@@ -207,7 +208,7 @@ export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpe
           onOpenComments={(v) => setCommentsForId(v.id)}
           onShare={handleShare}
           onReport={(v) => setReportForId(v.id)}
-          nav={{ onSearch: onOpenSearch, onUpload: onOpenUpload, onOwnProfile: onOpenOwnProfile }}
+          nav={{ onSearch: onOpenSearch, onUpload: onOpenUpload }}
         />
       )}
 

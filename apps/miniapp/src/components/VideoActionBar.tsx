@@ -5,7 +5,6 @@ import type { FeedItem } from "../lib/feed";
 interface NavProps {
   onSearch: () => void;
   onUpload: () => void;
-  onOwnProfile: () => void;
 }
 
 interface Props {
@@ -126,22 +125,13 @@ export default function VideoActionBar({
       </div>
 
       {nav && (
-        <div className="pointer-events-auto flex shrink-0 flex-col gap-1.5">
-          <button
-            type="button"
-            onClick={nav.onOwnProfile}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur-xl"
-          >
-            <UserRound size={18} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            onClick={nav.onUpload}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg"
-          >
-            <Plus size={22} strokeWidth={2.5} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={nav.onUpload}
+          className="pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg"
+        >
+          <Plus size={22} strokeWidth={2.5} />
+        </button>
       )}
     </div>
   );
