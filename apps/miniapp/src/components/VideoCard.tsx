@@ -6,28 +6,13 @@ interface Props {
   active: boolean;
   preload: "auto" | "metadata" | "none";
   muted: boolean;
-  onToggleMute: () => void;
-  onToggleLike: (item: FeedItem) => void;
   onOpenAuthor: (item: FeedItem) => void;
-  onOpenComments: (item: FeedItem) => void;
-  onShare: (item: FeedItem) => void;
-  onReport: (item: FeedItem) => void;
   registerNode: (node: HTMLDivElement | null) => void;
 }
 
-export default function VideoCard({
-  item,
-  active,
-  preload,
-  muted,
-  onToggleMute,
-  onToggleLike,
-  onOpenAuthor,
-  onOpenComments,
-  onShare,
-  onReport,
-  registerNode,
-}: Props) {
+// Playback + caption only — likes/comments/share/mute/report live in
+// VideoActionBar, the floating bottom bar rendered alongside this card.
+export default function VideoCard({ item, active, preload, muted, onOpenAuthor, registerNode }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -73,8 +58,8 @@ export default function VideoCard({
       />
 
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-black/10">
-        <div className="pointer-events-auto flex items-end justify-between gap-4 p-4 pb-24">
-          <div className="min-w-0 flex-1 text-white">
+        <div className="pointer-events-auto p-4 pb-28" style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}>
+          <div className="min-w-0 max-w-[75%] text-white">
             <button type="button" onClick={() => onOpenAuthor(item)} className="text-sm font-semibold">
               @{authorLabel}
             </button>
@@ -82,26 +67,6 @@ export default function VideoCard({
             {item.hashtags.length > 0 && (
               <p className="mt-1 text-xs text-white/70">{item.hashtags.map((h) => `#${h}`).join(" ")}</p>
             )}
-          </div>
-
-          <div className="flex flex-col items-center gap-4 text-white">
-            <button type="button" onClick={() => onToggleLike(item)} className="flex flex-col items-center">
-              <span className="text-2xl">{item.isLiked ? "❤️" : "🤍"}</span>
-              <span className="text-xs">{item.likesCount}</span>
-            </button>
-            <button type="button" onClick={() => onOpenComments(item)} className="flex flex-col items-center">
-              <span className="text-2xl">💬</span>
-              <span className="text-xs">{item.commentsCount}</span>
-            </button>
-            <button type="button" onClick={() => onShare(item)} className="flex flex-col items-center">
-              <span className="text-2xl">🔗</span>
-            </button>
-            <button type="button" onClick={onToggleMute} className="flex flex-col items-center">
-              <span className="text-2xl">{muted ? "🔇" : "🔊"}</span>
-            </button>
-            <button type="button" onClick={() => onReport(item)} className="flex flex-col items-center">
-              <span className="text-xl">🚩</span>
-            </button>
           </div>
         </div>
       </div>

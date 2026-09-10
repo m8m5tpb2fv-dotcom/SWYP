@@ -3,6 +3,7 @@ import WebApp from "@twa-dev/sdk";
 import { fetchUserProfile, fetchUserVideos, followUser, unfollowUser, type UserProfile } from "../lib/users";
 import { likeVideo, unlikeVideo, shareVideo, type FeedItem } from "../lib/feed";
 import VideoCard from "./VideoCard";
+import VideoActionBar from "./VideoActionBar";
 import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
 
@@ -168,7 +169,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
         <p className="py-6 text-center text-sm text-white/40">Пока нет опубликованных Shorts</p>
       )}
 
-      {openIndex !== null && videos[openIndex] && (
+      {openIndex !== null && videos[openIndex] && !commentsForId && !reportForId && (
         <div className="absolute inset-0 z-40 bg-black">
           <button
             type="button"
@@ -177,11 +178,18 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
           >
             ✕
           </button>
-          <VideoCard
-            key={videos[openIndex].id}
+          {openIndex < videos.length - 1 && (
+            <button
+              type="button"
+              onClick={() => setOpenIndex((i) => (i !== null ? i + 1 : i))}
+              className="absolute left-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white backdrop-blur"
+            >
+              ↓
+            </button>
+          )}
+          <VideoCard key={videos[openIndex].id} item={videos[openIndex]} active preload="auto" muted={muted} onOpenAuthor={() => {}} registerNode={() => {}} />
+          <VideoActionBar
             item={videos[openIndex]}
-            active
-            preload="auto"
             muted={muted}
             onToggleMute={() => setMuted((m) => !m)}
             onToggleLike={handleToggleLike}
@@ -189,17 +197,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             onOpenComments={(v) => setCommentsForId(v.id)}
             onShare={handleShare}
             onReport={(v) => setReportForId(v.id)}
-            registerNode={() => {}}
           />
-          {openIndex < videos.length - 1 && (
-            <button
-              type="button"
-              onClick={() => setOpenIndex((i) => (i !== null ? i + 1 : i))}
-              className="absolute inset-x-0 bottom-0 z-10 py-3 text-center text-xs text-white/60"
-            >
-              Следующее видео ↓
-            </button>
-          )}
         </div>
       )}
 

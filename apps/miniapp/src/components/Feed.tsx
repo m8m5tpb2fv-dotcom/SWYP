@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import VideoCard from "./VideoCard";
+import VideoActionBar from "./VideoActionBar";
 import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
 import { fetchFeed, likeVideo, unlikeVideo, shareVideo, type FeedItem } from "../lib/feed";
@@ -11,9 +12,12 @@ const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? "SWYP_bot";
 interface Props {
   currentUserId: string;
   onOpenProfile: (userId: string) => void;
+  onOpenSearch: () => void;
+  onOpenUpload: () => void;
+  onOpenOwnProfile: () => void;
 }
 
-export default function Feed({ currentUserId, onOpenProfile }: Props) {
+export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpenUpload, onOpenOwnProfile }: Props) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -204,6 +208,7 @@ export default function Feed({ currentUserId, onOpenProfile }: Props) {
   }
 
   const activeIndex = items.findIndex((i) => i.id === activeId);
+  const activeItem = activeIndex !== -1 ? items[activeIndex] : null;
 
   return (
     <div className="relative h-full w-full">
@@ -221,17 +226,26 @@ export default function Feed({ currentUserId, onOpenProfile }: Props) {
               active={item.id === activeId}
               preload={distance <= 1 ? "auto" : "metadata"}
               muted={muted}
-              onToggleMute={() => setMuted((m) => !m)}
-              onToggleLike={handleToggleLike}
               onOpenAuthor={handleOpenAuthor}
-              onOpenComments={(v) => setCommentsForId(v.id)}
-              onShare={handleShare}
-              onReport={(v) => setReportForId(v.id)}
               registerNode={(node) => setNodeRef(item.id, node)}
             />
           );
         })}
       </div>
+
+      {activeItem && !commentsForId && !reportForId && (
+        <VideoActionBar
+          item={activeItem}
+          muted={muted}
+          onToggleMute={() => setMuted((m) => !m)}
+          onToggleLike={handleToggleLike}
+          onOpenAuthor={handleOpenAuthor}
+          onOpenComments={(v) => setCommentsForId(v.id)}
+          onShare={handleShare}
+          onReport={(v) => setReportForId(v.id)}
+          nav={{ onSearch: onOpenSearch, onUpload: onOpenUpload, onOwnProfile: onOpenOwnProfile }}
+        />
+      )}
 
       {commentsForId && (
         <CommentsSheet

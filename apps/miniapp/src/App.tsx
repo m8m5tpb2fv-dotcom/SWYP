@@ -55,33 +55,14 @@ export default function App() {
 
   return (
     <div className="relative h-full w-full bg-black">
-      <Feed key={feedKey} currentUserId={auth.user.id} onOpenProfile={setViewingUserId} />
-
-      {!uploadOpen && !viewingUserId && !searchOpen && (
-        <>
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            className="absolute left-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-lg text-white shadow-lg backdrop-blur"
-          >
-            🔍
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewingUserId(auth.user.id)}
-            className="absolute bottom-6 left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-2xl text-white shadow-lg backdrop-blur"
-          >
-            👤
-          </button>
-          <button
-            type="button"
-            onClick={() => setUploadOpen(true)}
-            className="absolute bottom-6 right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-2xl text-white shadow-lg"
-          >
-            ＋
-          </button>
-        </>
-      )}
+      <Feed
+        key={feedKey}
+        currentUserId={auth.user.id}
+        onOpenProfile={setViewingUserId}
+        onOpenSearch={() => setSearchOpen(true)}
+        onOpenUpload={() => setUploadOpen(true)}
+        onOpenOwnProfile={() => setViewingUserId(auth.user.id)}
+      />
 
       {uploadOpen && (
         <UploadScreen
