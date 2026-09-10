@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import WebApp from "@twa-dev/sdk";
 import VideoCard from "./VideoCard";
 import VideoActionBar from "./VideoActionBar";
 import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
-import { fetchFeed, likeVideo, unlikeVideo, shareVideo, type FeedItem } from "../lib/feed";
+import { fetchFeed, type FeedItem } from "../lib/feed";
+import { useVideoInteractions } from "../lib/useVideoInteractions";
 import { sendImpression, sendWatch } from "../lib/events";
-
-const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? "SWYP_bot";
 
 interface Props {
   currentUserId: string;
@@ -136,29 +134,7 @@ export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpe
     };
   }, []);
 
-  const handleToggleLike = useCallback((item: FeedItem) => {
-    const wasLiked = item.isLiked;
-    setItems((prev) =>
-      prev.map((v) =>
-        v.id === item.id
-          ? { ...v, isLiked: !wasLiked, likesCount: v.likesCount + (wasLiked ? -1 : 1) }
-          : v,
-      ),
-    );
-
-    const request = wasLiked ? unlikeVideo(item.id) : likeVideo(item.id);
-    request
-      .then((result) => {
-        setItems((prev) =>
-          prev.map((v) => (v.id === item.id ? { ...v, isLiked: result.liked, likesCount: result.likesCount } : v)),
-        );
-      })
-      .catch(() => {
-        setItems((prev) =>
-          prev.map((v) => (v.id === item.id ? { ...v, isLiked: wasLiked, likesCount: item.likesCount } : v)),
-        );
-      });
-  }, []);
+  const { handleToggleLike, handleShare } = useVideoInteractions(setItems);
 
   const handleOpenAuthor = useCallback(
     (item: FeedItem) => {
@@ -166,18 +142,6 @@ export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpe
     },
     [onOpenProfile],
   );
-
-  const handleShare = useCallback((item: FeedItem) => {
-    const deepLink = `https://t.me/${BOT_USERNAME}/app?startapp=video_${item.id}`;
-    const text = item.title ? `🔥 Посмотри этот Short: ${item.title}` : "🔥 Посмотри этот Short";
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(deepLink)}&text=${encodeURIComponent(text)}`;
-    WebApp.openTelegramLink(shareUrl);
-    shareVideo(item.id)
-      .then((result) => {
-        setItems((prev) => prev.map((v) => (v.id === item.id ? { ...v, sharesCount: result.sharesCount } : v)));
-      })
-      .catch(() => {});
-  }, []);
 
   const handleCommentCountChange = useCallback((videoId: string, delta: number) => {
     setItems((prev) => prev.map((v) => (v.id === videoId ? { ...v, commentsCount: v.commentsCount + delta } : v)));

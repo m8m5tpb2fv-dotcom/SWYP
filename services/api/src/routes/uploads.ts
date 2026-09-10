@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@swyp/database";
-import { getPresignedPutUrl, objectExists } from "@swyp/storage";
+import { getPresignedPutUrl, getPresignedGetUrl, objectExists } from "@swyp/storage";
 import { authenticate } from "../plugins/authenticate.js";
 import { videoProcessingQueue } from "../queues.js";
 
@@ -79,6 +79,12 @@ export async function uploadRoutes(app: FastifyInstance) {
     if (!video || video.userId !== request.user.sub) {
       return reply.code(404).send({ error: "Video not found" });
     }
-    return { id: video.id, status: video.status, videoUrl: video.videoUrl, thumbnailUrl: video.thumbnailUrl };
+    // video.videoUrl/thumbnailUrl store object keys, not URLs (the bucket is
+    // private) — sign fresh GET URLs the same way toFeedItem does.
+    const [videoUrl, thumbnailUrl] = await Promise.all([
+      video.videoUrl ? getPresignedGetUrl(video.videoUrl) : Promise.resolve(null),
+      video.thumbnailUrl ? getPresignedGetUrl(video.thumbnailUrl) : Promise.resolve(null),
+    ]);
+    return { id: video.id, status: video.status, videoUrl, thumbnailUrl };
   });
 }

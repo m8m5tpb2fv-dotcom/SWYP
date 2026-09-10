@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import { authenticateWithTelegram, type AuthUser } from "./lib/auth";
+import { fetchVideoById, type FeedItem } from "./lib/feed";
 import Feed from "./components/Feed";
 import UploadScreen from "./components/UploadScreen";
 import ProfileScreen from "./components/ProfileScreen";
 import SearchScreen from "./components/SearchScreen";
+import SharedVideoScreen from "./components/SharedVideoScreen";
 
 type AuthState =
   | { status: "loading" }
@@ -17,6 +19,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [feedKey, setFeedKey] = useState(0);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+  const [sharedVideo, setSharedVideo] = useState<FeedItem | null>(null);
 
   useEffect(() => {
     WebApp.ready();
@@ -53,6 +56,20 @@ export default function App() {
       .then((user) => setAuth({ status: "authenticated", user }))
       .catch((err) => setAuth({ status: "error", message: (err as Error).message }));
   }, []);
+
+  // Resolve a share deep link's start_param (t.me/<bot>/<app>?startapp=video_<id>,
+  // set by useVideoInteractions' handleShare) to open that video directly instead
+  // of landing on the normal feed — silently falls back to the feed if the video
+  // was deleted/unpublished since it was shared, or the param doesn't match.
+  useEffect(() => {
+    if (auth.status !== "authenticated") return;
+    const startParam = WebApp.initDataUnsafe.start_param;
+    const match = startParam?.match(/^video_(.+)$/);
+    if (!match) return;
+    fetchVideoById(match[1])
+      .then(setSharedVideo)
+      .catch(() => {});
+  }, [auth.status]);
 
   if (auth.status === "loading") {
     return (
@@ -95,6 +112,10 @@ export default function App() {
 
       {viewingUserId && (
         <ProfileScreen userId={viewingUserId} currentUserId={auth.user.id} onClose={() => setViewingUserId(null)} />
+      )}
+
+      {sharedVideo && (
+        <SharedVideoScreen video={sharedVideo} currentUserId={auth.user.id} onClose={() => setSharedVideo(null)} />
       )}
     </div>
   );

@@ -23,6 +23,28 @@ const CATEGORY_BOOST_WEIGHT = 0.4;
 const CATEGORY_AFFINITY_NORMALIZER = 5;
 
 export async function feedRoutes(app: FastifyInstance) {
+  // Backs share deep links (t.me/<bot>/<app>?startapp=video_<id>) — the miniapp
+  // reads WebApp.initDataUnsafe.start_param on launch and fetches this to open
+  // the shared video directly instead of just landing on the normal feed.
+  app.get("/api/videos/:id", { preHandler: authenticate }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const userId = request.user.sub;
+
+    const video = await prisma.video.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        likes: { where: { userId }, select: { id: true }, take: 1 },
+      },
+    });
+
+    if (!video || video.status !== "published") {
+      return reply.code(404).send({ error: "Video not found" });
+    }
+
+    return toFeedItem(video);
+  });
+
   app.get("/api/feed", { preHandler: authenticate }, async (request) => {
     const { cursor, category } = request.query as { cursor?: string; category?: string };
     const limit = parseLimit((request.query as { limit?: string }).limit, 10, 30);

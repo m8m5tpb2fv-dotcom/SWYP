@@ -41,6 +41,10 @@ export function fetchFeed(params: { cursor?: string; category?: string; limit?: 
   return apiFetch<FeedPage>(`/api/feed${qs ? `?${qs}` : ""}`);
 }
 
+export function fetchVideoById(id: string) {
+  return apiFetch<FeedItem>(`/api/videos/${id}`);
+}
+
 export function likeVideo(id: string) {
   return apiFetch<{ liked: boolean; likesCount: number }>(`/api/videos/${id}/like`, { method: "POST" });
 }
