@@ -33,6 +33,7 @@ export async function eventRoutes(app: FastifyInstance) {
         kind: "watch",
         watchSeconds: Math.max(0, Math.round(body.watchSeconds ?? 0)),
         completed: Boolean(body.completed),
+        userId: request.user.sub,
       });
     }
 

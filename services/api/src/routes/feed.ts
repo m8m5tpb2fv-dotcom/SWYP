@@ -4,33 +4,68 @@ import { authenticate } from "../plugins/authenticate.js";
 import { toFeedItem } from "../serializers.js";
 import { parseLimit } from "../pagination.js";
 
-// GET /api/feed — ranked by the ТЗ раздел 5 score (recomputed by the analytics
-// worker as watch/like/comment/share/report events land), createdAt as tiebreaker
-// so new videos (score 0 until they get engagement) still show newest-first among
-// themselves. Раздел 31's freshness-decay/exploration blend is future scope.
+// Candidate-pool + re-rank personalization: pull the top POOL_LIMIT globally-
+// scored published videos (so low-quality content never surfaces regardless
+// of personal affinity), then boost each candidate for the requesting user by
+// (a) following the author and (b) their UserCategoryScore for that video's
+// category (built by the analytics worker from watch ratio + likes — see
+// services/analytics-worker). This keeps ranking logic simple JS rather than
+// a raw-SQL weighted join, at the cost of a pool size ceiling: a user who
+// scrolls past POOL_LIMIT videos in one session sees hasMore=false even if
+// more published videos exist further down the global ranking. Fine at
+// current scale; a real ranking service is the fix once that stops being true.
+const POOL_LIMIT = 300;
+const FOLLOW_BOOST = 0.5;
+const CATEGORY_BOOST_WEIGHT = 0.4;
+// A user who has liked/watched their way to this much affinity in one
+// category gets the full category boost — the raw score is unbounded
+// (bumps only accumulate), so cap the *effect* rather than the stored value.
+const CATEGORY_AFFINITY_NORMALIZER = 5;
+
 export async function feedRoutes(app: FastifyInstance) {
   app.get("/api/feed", { preHandler: authenticate }, async (request) => {
     const { cursor, category } = request.query as { cursor?: string; category?: string };
     const limit = parseLimit((request.query as { limit?: string }).limit, 10, 30);
     const userId = request.user.sub;
 
-    const videos = await prisma.video.findMany({
-      where: { status: "published", ...(category ? { category } : {}) },
-      orderBy: [{ score: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      include: {
-        user: true,
-        likes: { where: { userId }, select: { id: true }, take: 1 },
-      },
-    });
+    const offset = cursor ? Math.max(0, parseInt(cursor, 10) || 0) : 0;
 
-    const hasMore = videos.length > limit;
-    const items = videos.slice(0, limit);
+    const [candidates, affinityRows, followedRows] = await Promise.all([
+      prisma.video.findMany({
+        where: { status: "published", ...(category ? { category } : {}) },
+        orderBy: [{ score: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+        take: POOL_LIMIT,
+        include: {
+          user: true,
+          likes: { where: { userId }, select: { id: true }, take: 1 },
+        },
+      }),
+      prisma.userCategoryScore.findMany({ where: { userId }, select: { category: true, score: true } }),
+      prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } }),
+    ]);
+
+    const affinityByCategory = new Map(affinityRows.map((r) => [r.category, r.score]));
+    const followedAuthorIds = new Set(followedRows.map((r) => r.followingId));
+
+    const ranked = candidates
+      .map((video) => {
+        const followBoost = followedAuthorIds.has(video.userId) ? FOLLOW_BOOST : 0;
+        const affinity = video.category ? (affinityByCategory.get(video.category) ?? 0) : 0;
+        const categoryBoost = Math.min(affinity / CATEGORY_AFFINITY_NORMALIZER, 1) * CATEGORY_BOOST_WEIGHT;
+        return { video, personalizedScore: video.score + followBoost + categoryBoost };
+      })
+      .sort((a, b) => {
+        if (b.personalizedScore !== a.personalizedScore) return b.personalizedScore - a.personalizedScore;
+        return b.video.createdAt.getTime() - a.video.createdAt.getTime();
+      })
+      .map((r) => r.video);
+
+    const page = ranked.slice(offset, offset + limit);
+    const hasMore = offset + limit < ranked.length;
 
     return {
-      items: await Promise.all(items.map(toFeedItem)),
-      next_cursor: hasMore ? items[items.length - 1].id : null,
+      items: await Promise.all(page.map(toFeedItem)),
+      next_cursor: hasMore ? String(offset + limit) : null,
     };
   });
 }

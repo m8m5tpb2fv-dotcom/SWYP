@@ -28,6 +28,10 @@ export async function likeRoutes(app: FastifyInstance) {
 
     const updated = await prisma.video.findUniqueOrThrow({ where: { id }, select: { likesCount: true } });
     await analyticsQueue.add("event", { videoId: id, kind: "recompute" });
+    // A like is a strong, explicit interest signal — feeds the liker's
+    // per-category affinity for the personalized feed (unlike is not treated
+    // as negative; that overloads "I don't like this" with "I misclicked").
+    await analyticsQueue.add("event", { videoId: id, kind: "like", userId });
     return { liked: true, likesCount: updated.likesCount };
   });
 

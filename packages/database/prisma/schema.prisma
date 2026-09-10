@@ -28,14 +28,34 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  videos    Video[]
-  likes     Like[]
-  comments  Comment[]
-  followers Follow[]  @relation("Followers")
-  following Follow[]  @relation("Following")
-  reports   Report[]
+  videos         Video[]
+  likes          Like[]
+  comments       Comment[]
+  followers      Follow[]            @relation("Followers")
+  following      Follow[]            @relation("Following")
+  reports        Report[]
+  categoryScores UserCategoryScore[]
 
   @@map("users")
+}
+
+// Per-user category affinity feeding the personalized feed (ТЗ раздел 5's
+// personalization gap): built up by the analytics worker from watch-time
+// ratio/completion (small increments — a passive signal) and likes (a larger,
+// explicit-intent increment). /api/feed blends this with each video's global
+// score and whether the viewer follows its author.
+model UserCategoryScore {
+  id        String   @id @default(uuid())
+  userId    String
+  category  String
+  score     Float    @default(0)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+  @@index([userId])
+  @@map("user_category_scores")
 }
 
 model Follow {

@@ -5,9 +5,28 @@ const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
 interface AnalyticsJob {
   videoId: string;
-  kind: "impression" | "watch" | "recompute";
+  kind: "impression" | "watch" | "recompute" | "like";
   watchSeconds?: number;
   completed?: boolean;
+  userId?: string;
+}
+
+// Personalization input for /api/feed (ТЗ раздел 5's "same order for everyone"
+// gap): watch-based bumps are small and capped since a watch event fires on
+// every video scrolled past, while a like is one deliberate tap — its bump is
+// proportionally much larger. Bumps only accumulate (no decay on unlike/skip)
+// to keep this a simple, cheap-to-explain "interest", not a full negative
+// feedback model.
+const WATCH_AFFINITY_WEIGHT = 0.3;
+const LIKE_AFFINITY_BUMP = 1.5;
+
+async function bumpCategoryAffinity(userId: string, category: string | null, delta: number) {
+  if (!category || delta <= 0) return;
+  await prisma.userCategoryScore.upsert({
+    where: { userId_category: { userId, category } },
+    create: { userId, category, score: delta },
+    update: { score: { increment: delta } },
+  });
 }
 
 // Recommendation score per ТЗ раздел 5 — built from per-impression rates rather than
@@ -50,13 +69,22 @@ const worker = new Worker(
     if (data.kind === "impression") {
       await prisma.video.update({ where: { id: data.videoId }, data: { viewsCount: { increment: 1 } } });
     } else if (data.kind === "watch") {
-      await prisma.video.update({
+      const video = await prisma.video.update({
         where: { id: data.videoId },
         data: {
           watchTimeSum: { increment: Math.max(0, Math.round(data.watchSeconds ?? 0)) },
           ...(data.completed ? { completedViewsCount: { increment: 1 } } : {}),
         },
       });
+      if (data.userId) {
+        const watchRatio = video.duration
+          ? Math.min((data.watchSeconds ?? 0) / video.duration, 1)
+          : 0;
+        await bumpCategoryAffinity(data.userId, video.category, watchRatio * WATCH_AFFINITY_WEIGHT);
+      }
+    } else if (data.kind === "like" && data.userId) {
+      const video = await prisma.video.findUnique({ where: { id: data.videoId }, select: { category: true } });
+      await bumpCategoryAffinity(data.userId, video?.category ?? null, LIKE_AFFINITY_BUMP);
     }
 
     await recomputeScore(data.videoId);
