@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { UserRound } from "lucide-react";
 import { search, type SearchResults } from "../lib/search";
 
 interface Props {
@@ -70,7 +71,11 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
                       className="flex w-full items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-left"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10">
-                        {u.avatarUrl ? <img src={u.avatarUrl} alt="" className="h-full w-full object-cover" /> : "👤"}
+                        {u.avatarUrl ? (
+                          <img src={u.avatarUrl} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <UserRound size={18} strokeWidth={2} className="text-white/60" />
+                        )}
                       </div>
                       <span className="text-sm">@{u.username ?? u.firstName ?? "пользователь"}</span>
                     </button>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { UserRound, Send } from "lucide-react";
 import { fetchComments, postComment, deleteComment, type CommentItem } from "../lib/comments";
 
 interface Props {
@@ -97,11 +98,11 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
             const authorLabel = comment.author.username ?? comment.author.firstName ?? "Пользователь";
             return (
               <div key={comment.id} className="flex items-start gap-3 border-b border-white/5 py-3 last:border-none">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10 text-sm">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10">
                   {comment.author.avatarUrl ? (
                     <img src={comment.author.avatarUrl} alt={authorLabel} className="h-full w-full object-cover" />
                   ) : (
-                    "👤"
+                    <UserRound size={16} strokeWidth={2} className="text-white/60" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -147,9 +148,9 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
           <button
             type="submit"
             disabled={posting || !text.trim()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-sm text-white disabled:bg-white/10 disabled:text-white/30"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white disabled:bg-white/10 disabled:text-white/30"
           >
-            ➤
+            <Send size={16} strokeWidth={2} />
           </button>
         </form>
       </div>

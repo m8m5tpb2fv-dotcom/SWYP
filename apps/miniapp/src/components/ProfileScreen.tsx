@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import WebApp from "@twa-dev/sdk";
+import { X, ChevronDown, UserRound } from "lucide-react";
 import { fetchUserProfile, fetchUserVideos, followUser, unfollowUser, type UserProfile } from "../lib/users";
 import { likeVideo, unlikeVideo, shareVideo, type FeedItem } from "../lib/feed";
 import VideoCard from "./VideoCard";
@@ -107,11 +108,11 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
 
       {profile && (
         <div className="flex flex-col items-center gap-3 px-6 py-6">
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-white/10 text-2xl">
+          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-white/10">
             {profile.avatarUrl ? (
               <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
             ) : (
-              "👤"
+              <UserRound size={32} strokeWidth={2} className="text-white/60" />
             )}
           </div>
           <p className="text-base font-semibold">@{displayName}</p>
@@ -177,19 +178,19 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
           <button
             type="button"
             onClick={() => setOpenIndex(null)}
-            className="absolute right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white backdrop-blur"
+            className="absolute right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur"
             style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
           >
-            ✕
+            <X size={18} strokeWidth={2} />
           </button>
           {openIndex < videos.length - 1 && (
             <button
               type="button"
               onClick={() => setOpenIndex((i) => (i !== null ? i + 1 : i))}
-              className="absolute left-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white backdrop-blur"
+              className="absolute left-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur"
               style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
             >
-              ↓
+              <ChevronDown size={18} strokeWidth={2} />
             </button>
           )}
           <VideoCard key={videos[openIndex].id} item={videos[openIndex]} active preload="auto" muted={muted} onOpenAuthor={() => {}} registerNode={() => {}} />
