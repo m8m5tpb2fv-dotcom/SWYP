@@ -112,12 +112,12 @@ export default function VideoActionBar({
               rather than a color change, since the design calls for the
               button itself to stay blue. Count sits inside the same round
               badge as the heart rather than as a separate label below it.
-              Deliberately bigger than every other control — the focal action. */}
-          <button
-            type="button"
-            onClick={() => onToggleLike(item)}
-            className="-mt-3 flex w-16 shrink-0 flex-col items-center"
-          >
+              Deliberately bigger than every other control — the focal action.
+              No manual vertical offset: items-center on the row already
+              centers the taller button symmetrically (bulging evenly above
+              and below the pill) — an extra negative margin here previously
+              pushed it up unevenly instead. */}
+          <button type="button" onClick={() => onToggleLike(item)} className="flex w-16 shrink-0 items-center justify-center">
             <div className="flex h-16 w-16 flex-col items-center justify-center rounded-full border-[3px] border-black/50 bg-blue-500 shadow-lg">
               <Heart size={24} strokeWidth={2} fill={item.isLiked ? "white" : "none"} className="text-white" />
               <span className="text-[11px] font-semibold leading-none text-white">{item.likesCount}</span>
