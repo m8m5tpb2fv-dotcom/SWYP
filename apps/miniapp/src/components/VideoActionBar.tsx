@@ -1,4 +1,5 @@
-import { MessageCircle, Heart, Link2, Volume2, VolumeX, Flag, Search, UserRound, Plus } from "lucide-react";
+import WebApp from "@twa-dev/sdk";
+import { MessageCircle, Heart, Link2, Volume2, VolumeX, Flag, Search, UserRound, Plus, Download } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
 
 interface NavProps {
@@ -40,6 +41,14 @@ export default function VideoActionBar({
   nav,
 }: Props) {
   const authorLabel = item.author.username ?? item.author.firstName ?? "автор";
+
+  const handleDownload = () => {
+    if (!item.videoUrl) return;
+    // Native Telegram download flow (Bot API 8.0+) — the client handles the
+    // save-to-device prompt/progress itself. Older clients ignore the call
+    // silently, so there's nothing to fall back to from inside the WebView.
+    WebApp.downloadFile({ url: item.videoUrl, file_name: `SWYP-${item.id}.mp4` });
+  };
 
   return (
     <div
@@ -89,6 +98,10 @@ export default function VideoActionBar({
 
         <button type="button" onClick={() => onShare(item)} className="flex flex-col items-center px-1.5 text-white">
           <Link2 size={22} strokeWidth={2} />
+        </button>
+
+        <button type="button" onClick={handleDownload} className="flex flex-col items-center px-1.5 text-white">
+          <Download size={22} strokeWidth={2} />
         </button>
 
         <button type="button" onClick={onToggleMute} className="flex flex-col items-center px-1.5 text-white">

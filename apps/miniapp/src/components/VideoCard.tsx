@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
+import { Eye } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
+import { formatCount } from "../lib/format";
 
 interface Props {
   item: FeedItem;
@@ -67,6 +69,10 @@ export default function VideoCard({ item, active, preload, muted, onOpenAuthor, 
             {item.hashtags.length > 0 && (
               <p className="mt-1 text-xs text-white/70">{item.hashtags.map((h) => `#${h}`).join(" ")}</p>
             )}
+            <div className="mt-1.5 flex items-center gap-1 text-xs text-white/60">
+              <Eye size={13} strokeWidth={2} />
+              <span>{formatCount(item.viewsCount)} просмотров</span>
+            </div>
           </div>
         </div>
       </div>
