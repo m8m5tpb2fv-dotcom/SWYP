@@ -8,7 +8,7 @@ interface Props {
 
 type Stage =
   | { kind: "pick" }
-  | { kind: "uploading" }
+  | { kind: "uploading"; progress: number }
   | { kind: "form"; videoId: string }
   | { kind: "publishing"; videoId: string }
   | { kind: "processing"; videoId: string }
@@ -41,11 +41,13 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setStage({ kind: "uploading" });
+    setStage({ kind: "uploading", progress: 0 });
     try {
       const contentType = file.type || "video/mp4";
       const { videoId, uploadUrl } = await requestUploadUrl(contentType);
-      await uploadFileToStorage(uploadUrl, file, contentType);
+      await uploadFileToStorage(uploadUrl, file, contentType, (fraction) =>
+        setStage({ kind: "uploading", progress: fraction }),
+      );
       setStage({ kind: "form", videoId });
     } catch (err) {
       setStage({ kind: "error", message: (err as Error).message });
@@ -104,7 +106,19 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
           </label>
         )}
 
-        {stage.kind === "uploading" && <p className="text-sm text-white/70">Загрузка видео…</p>}
+        {stage.kind === "uploading" && (
+          <div className="w-full max-w-xs space-y-2">
+            <p className="text-center text-sm text-white/70">
+              Загрузка видео… {Math.round(stage.progress * 100)}%
+            </p>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-blue-500 transition-[width]"
+                style={{ width: `${Math.round(stage.progress * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {stage.kind === "form" && (
           <div className="w-full space-y-3">

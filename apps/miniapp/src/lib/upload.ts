@@ -17,15 +17,33 @@ export function requestUploadUrl(contentType: string) {
 // rejects the PUT with SignatureDoesNotMatch if the header differs (e.g. when
 // file.type comes back empty for some formats and requestUploadUrl fell back
 // to "video/mp4" while this used the empty string).
-export async function uploadFileToStorage(uploadUrl: string, file: File, contentType: string) {
-  const res = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: file,
+//
+// Uses XMLHttpRequest rather than fetch() because fetch has no upload-progress
+// event — for a multi-minute video over mobile data, an unmoving "Uploading…"
+// label is indistinguishable from a hang, so onProgress lets the UI show %.
+export function uploadFileToStorage(
+  uploadUrl: string,
+  file: File,
+  contentType: string,
+  onProgress?: (fraction: number) => void,
+) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Не удалось загрузить видео (${xhr.status})`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Не удалось загрузить видео (сетевая ошибка)"));
+    xhr.send(file);
   });
-  if (!res.ok) {
-    throw new Error(`Не удалось загрузить видео (${res.status})`);
-  }
 }
 
 export interface PublishPayload {
