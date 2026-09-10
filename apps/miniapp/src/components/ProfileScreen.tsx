@@ -1,18 +1,29 @@
 import { useEffect, useState } from "react";
+import WebApp from "@twa-dev/sdk";
 import { fetchUserProfile, fetchUserVideos, followUser, unfollowUser, type UserProfile } from "../lib/users";
-import type { FeedItem } from "../lib/feed";
+import { likeVideo, unlikeVideo, shareVideo, type FeedItem } from "../lib/feed";
+import VideoCard from "./VideoCard";
+import CommentsSheet from "./CommentsSheet";
+import ReportSheet from "./ReportSheet";
+
+const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME ?? "SWYP_bot";
 
 interface Props {
   userId: string;
+  currentUserId: string;
   onClose: () => void;
 }
 
-export default function ProfileScreen({ userId, onClose }: Props) {
+export default function ProfileScreen({ userId, currentUserId, onClose }: Props) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [videos, setVideos] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [followPending, setFollowPending] = useState(false);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [muted, setMuted] = useState(true);
+  const [commentsForId, setCommentsForId] = useState<string | null>(null);
+  const [reportForId, setReportForId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +57,37 @@ export default function ProfileScreen({ userId, onClose }: Props) {
   };
 
   const displayName = profile?.username ?? profile?.firstName ?? "Пользователь";
+
+  const handleToggleLike = (item: FeedItem) => {
+    const wasLiked = item.isLiked;
+    setVideos((prev) =>
+      prev.map((v) => (v.id === item.id ? { ...v, isLiked: !wasLiked, likesCount: v.likesCount + (wasLiked ? -1 : 1) } : v)),
+    );
+    const request = wasLiked ? unlikeVideo(item.id) : likeVideo(item.id);
+    request
+      .then((result) => {
+        setVideos((prev) => prev.map((v) => (v.id === item.id ? { ...v, isLiked: result.liked, likesCount: result.likesCount } : v)));
+      })
+      .catch(() => {
+        setVideos((prev) => prev.map((v) => (v.id === item.id ? { ...v, isLiked: wasLiked, likesCount: item.likesCount } : v)));
+      });
+  };
+
+  const handleShare = (item: FeedItem) => {
+    const deepLink = `https://t.me/${BOT_USERNAME}/app?startapp=video_${item.id}`;
+    const text = item.title ? `🔥 Посмотри этот Short: ${item.title}` : "🔥 Посмотри этот Short";
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(deepLink)}&text=${encodeURIComponent(text)}`;
+    WebApp.openTelegramLink(shareUrl);
+    shareVideo(item.id)
+      .then((result) => {
+        setVideos((prev) => prev.map((v) => (v.id === item.id ? { ...v, sharesCount: result.sharesCount } : v)));
+      })
+      .catch(() => {});
+  };
+
+  const handleCommentCountChange = (videoId: string, delta: number) => {
+    setVideos((prev) => prev.map((v) => (v.id === videoId ? { ...v, commentsCount: v.commentsCount + delta } : v)));
+  };
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col overflow-y-auto bg-black text-white">
@@ -107,10 +149,17 @@ export default function ProfileScreen({ userId, onClose }: Props) {
 
       {videos.length > 0 && (
         <div className="grid grid-cols-3 gap-0.5 px-0.5 pb-6">
-          {videos.map((v) => (
-            <div key={v.id} className="aspect-[9/16] bg-white/5">
-              {v.thumbnailUrl && <img src={v.thumbnailUrl} alt={v.title ?? ""} className="h-full w-full object-cover" />}
-            </div>
+          {videos.map((v, index) => (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => setOpenIndex(index)}
+              className="aspect-[9/16] bg-white/5"
+            >
+              {v.thumbnailUrl && (
+                <img src={v.thumbnailUrl} alt={v.title ?? ""} className="h-full w-full object-cover" />
+              )}
+            </button>
           ))}
         </div>
       )}
@@ -118,6 +167,52 @@ export default function ProfileScreen({ userId, onClose }: Props) {
       {profile && videos.length === 0 && !loading && (
         <p className="py-6 text-center text-sm text-white/40">Пока нет опубликованных Shorts</p>
       )}
+
+      {openIndex !== null && videos[openIndex] && (
+        <div className="absolute inset-0 z-40 bg-black">
+          <button
+            type="button"
+            onClick={() => setOpenIndex(null)}
+            className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white backdrop-blur"
+          >
+            ✕
+          </button>
+          <VideoCard
+            key={videos[openIndex].id}
+            item={videos[openIndex]}
+            active
+            preload="auto"
+            muted={muted}
+            onToggleMute={() => setMuted((m) => !m)}
+            onToggleLike={handleToggleLike}
+            onOpenAuthor={() => {}}
+            onOpenComments={(v) => setCommentsForId(v.id)}
+            onShare={handleShare}
+            onReport={(v) => setReportForId(v.id)}
+            registerNode={() => {}}
+          />
+          {openIndex < videos.length - 1 && (
+            <button
+              type="button"
+              onClick={() => setOpenIndex((i) => (i !== null ? i + 1 : i))}
+              className="absolute inset-x-0 bottom-0 z-10 py-3 text-center text-xs text-white/60"
+            >
+              Следующее видео ↓
+            </button>
+          )}
+        </div>
+      )}
+
+      {commentsForId && (
+        <CommentsSheet
+          videoId={commentsForId}
+          currentUserId={currentUserId}
+          onClose={() => setCommentsForId(null)}
+          onCountChange={(delta) => handleCommentCountChange(commentsForId, delta)}
+        />
+      )}
+
+      {reportForId && <ReportSheet videoId={reportForId} onClose={() => setReportForId(null)} />}
     </div>
   );
 }

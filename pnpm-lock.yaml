@@ -61,8 +61,8 @@ importers:
   apps/miniapp:
     dependencies:
       '@twa-dev/sdk':
-        specifier: ^7.10.1
-        version: 7.10.1(react@18.3.1)
+        specifier: ^8.0.2
+        version: 8.0.2(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -967,13 +967,13 @@ packages:
     resolution: {integrity: sha512-CgB6HHWer/vrKps24ulRIbpcpb7K4xAU7SkZ7YHzBPlwHsvsrCJFEXK421s+cJzX+ZrqtA/TuU5w1HzI7k9N8A==}
     engines: {node: '>=18.0.0'}
 
-  '@twa-dev/sdk@7.10.1':
-    resolution: {integrity: sha512-mY9JaBPspYfLdzoaARVmr0GKXUO3X4hi1vuP+04UUFWST2lB50xGSxExOFz5I3vBaxnrdLregBGiaitvvWaX6w==}
+  '@twa-dev/sdk@8.0.2':
+    resolution: {integrity: sha512-Pp5GxnxP2blboVZFiM9aWjs4cb8IpW3x2jP3kLOMvIqy0jzNUTuFHkwHtx+zEvh/UcF2F+wmS8G6ebIA0XPXcg==}
     peerDependencies:
-      react: ^18.3.1
+      react: ^18.0.0 || ^19.0.0
 
-  '@twa-dev/types@7.10.0':
-    resolution: {integrity: sha512-BXHyNLXy+cPbOZ2qQq5ArPKcP4kUfuX3YBSFT0XUxtMNWAzvyMuYAiq59UTfQ8OnELXlfChrAoIT3c2pujBtcQ==}
+  '@twa-dev/types@8.0.2':
+    resolution: {integrity: sha512-ICQ6n4NaUPPzV3/GzflVQS6Nnu5QX2vr9OlOG8ZkFf3rSJXzRKazrLAbZlVhCPPWkIW3MMuELPsE6tByrA49qA==}
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -2411,12 +2411,12 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@twa-dev/sdk@7.10.1(react@18.3.1)':
+  '@twa-dev/sdk@8.0.2(react@18.3.1)':
     dependencies:
-      '@twa-dev/types': 7.10.0
+      '@twa-dev/types': 8.0.2
       react: 18.3.1
 
-  '@twa-dev/types@7.10.0': {}
+  '@twa-dev/types@8.0.2': {}
 
   '@types/babel__core@7.20.5':
     dependencies:

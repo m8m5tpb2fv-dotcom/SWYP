@@ -114,7 +114,10 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t px-4 py-3">
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-center gap-2 border-t px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"
+        >
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
