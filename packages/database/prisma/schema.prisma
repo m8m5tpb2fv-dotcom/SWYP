@@ -35,8 +35,28 @@ model User {
   following      Follow[]            @relation("Following")
   reports        Report[]
   categoryScores UserCategoryScore[]
+  views          VideoView[]
 
   @@map("users")
+}
+
+// One row per (user, video) — caps viewsCount at one per unique viewer for
+// that video's whole lifetime, rather than once per app session. Without
+// this, closing and reopening the Mini App resets the client's in-memory
+// "already impressed this video" set (see Feed.tsx impressedRef) and the
+// same viewer re-watching inflates the count every time they come back.
+model VideoView {
+  id        String   @id @default(uuid())
+  userId    String
+  videoId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@index([videoId])
+  @@map("video_views")
 }
 
 // Per-user category affinity feeding the personalized feed (ТЗ раздел 5's
@@ -114,10 +134,11 @@ model Video {
   updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes    Like[]
   comments Comment[]
   reports  Report[]
+  views    VideoView[]
 
   @@index([userId])
   @@index([status])

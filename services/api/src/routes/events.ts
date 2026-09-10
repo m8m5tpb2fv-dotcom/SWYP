@@ -26,7 +26,7 @@ export async function eventRoutes(app: FastifyInstance) {
     }
 
     if (body.type === "video_impression") {
-      await analyticsQueue.add("event", { videoId: body.videoId, kind: "impression" });
+      await analyticsQueue.add("event", { videoId: body.videoId, kind: "impression", userId: request.user.sub });
     } else {
       await analyticsQueue.add("event", {
         videoId: body.videoId,

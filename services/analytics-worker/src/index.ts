@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { prisma } from "@swyp/database";
+import { Prisma, prisma } from "@swyp/database";
 
 const connection = { url: process.env.REDIS_URL ?? "redis://localhost:6379" };
 
@@ -67,7 +67,20 @@ const worker = new Worker(
     const data = job.data as AnalyticsJob;
 
     if (data.kind === "impression") {
-      await prisma.video.update({ where: { id: data.videoId }, data: { viewsCount: { increment: 1 } } });
+      // viewsCount counts unique viewers, not raw impressions — otherwise
+      // closing and reopening the Mini App (which resets the client's
+      // in-session "already impressed" set, see Feed.tsx impressedRef)
+      // inflates the count every time the same person re-watches.
+      if (data.userId) {
+        try {
+          await prisma.videoView.create({ data: { userId: data.userId, videoId: data.videoId } });
+          await prisma.video.update({ where: { id: data.videoId }, data: { viewsCount: { increment: 1 } } });
+        } catch (err) {
+          const isDuplicate = err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+          if (!isDuplicate) throw err;
+          // already viewed by this user — no-op
+        }
+      }
     } else if (data.kind === "watch") {
       const video = await prisma.video.update({
         where: { id: data.videoId },
