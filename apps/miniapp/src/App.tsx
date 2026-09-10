@@ -7,6 +7,7 @@ import UploadScreen from "./components/UploadScreen";
 import ProfileScreen from "./components/ProfileScreen";
 import SearchScreen from "./components/SearchScreen";
 import SharedVideoScreen from "./components/SharedVideoScreen";
+import SplashScreen from "./components/SplashScreen";
 
 type AuthState =
   | { status: "loading" }
@@ -72,11 +73,7 @@ export default function App() {
   }, [auth.status]);
 
   if (auth.status === "loading") {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-black text-white">
-        <p className="text-sm text-white/60">Авторизация…</p>
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   if (auth.status === "error") {
