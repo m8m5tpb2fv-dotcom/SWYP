@@ -44,7 +44,6 @@ export default function SharedVideoScreen({ video, currentUserId, onClose }: Pro
           muted={muted}
           onToggleMute={() => setMuted((m) => !m)}
           onToggleLike={handleToggleLike}
-          onOpenAuthor={() => {}}
           onOpenComments={() => setCommentsOpen(true)}
           onShare={handleShare}
           onReport={() => setReportOpen(true)}

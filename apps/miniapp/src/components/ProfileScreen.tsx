@@ -172,7 +172,6 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             muted={muted}
             onToggleMute={() => setMuted((m) => !m)}
             onToggleLike={handleToggleLike}
-            onOpenAuthor={() => {}}
             onOpenComments={(v) => setCommentsForId(v.id)}
             onShare={handleShare}
             onReport={(v) => setReportForId(v.id)}

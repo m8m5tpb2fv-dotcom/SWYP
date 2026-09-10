@@ -1,5 +1,5 @@
 import WebApp from "@twa-dev/sdk";
-import { MessageCircle, Heart, Link2, Volume2, VolumeX, Flag, Search, UserRound, Plus, Download } from "lucide-react";
+import { MessageCircle, Heart, Link2, Volume2, VolumeX, Flag, Search, Plus, Download } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
 
 interface NavProps {
@@ -12,7 +12,6 @@ interface Props {
   muted: boolean;
   onToggleMute: () => void;
   onToggleLike: (item: FeedItem) => void;
-  onOpenAuthor: (item: FeedItem) => void;
   onOpenComments: (item: FeedItem) => void;
   onShare: (item: FeedItem) => void;
   onReport: (item: FeedItem) => void;
@@ -33,14 +32,11 @@ export default function VideoActionBar({
   muted,
   onToggleMute,
   onToggleLike,
-  onOpenAuthor,
   onOpenComments,
   onShare,
   onReport,
   nav,
 }: Props) {
-  const authorLabel = item.author.username ?? item.author.firstName ?? "автор";
-
   const handleDownload = () => {
     if (!item.videoUrl) return;
     // Native Telegram download flow (Bot API 8.0+) — the client handles the
@@ -80,16 +76,6 @@ export default function VideoActionBar({
         >
           <MessageCircle size={19} strokeWidth={2} />
           <span className="text-[10px] leading-none text-white/70">{item.commentsCount}</span>
-        </button>
-
-        <button type="button" onClick={() => onOpenAuthor(item)} className="flex w-8 shrink-0 items-center justify-center">
-          <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-white/10">
-            {item.author.avatarUrl ? (
-              <img src={item.author.avatarUrl} alt={authorLabel} className="h-full w-full object-cover" />
-            ) : (
-              <UserRound size={14} strokeWidth={2} className="text-white/70" />
-            )}
-          </div>
         </button>
 
         <button

@@ -12,18 +12,9 @@ interface Props {
   onOpenProfile: (userId: string) => void;
   onOpenSearch: () => void;
   onOpenUpload: () => void;
-  onOpenOwnProfile: () => void;
-  currentUserAvatarUrl: string | null;
 }
 
-export default function Feed({
-  currentUserId,
-  onOpenProfile,
-  onOpenSearch,
-  onOpenUpload,
-  onOpenOwnProfile,
-  currentUserAvatarUrl,
-}: Props) {
+export default function Feed({ currentUserId, onOpenProfile, onOpenSearch, onOpenUpload }: Props) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -199,8 +190,6 @@ export default function Feed({
               preload={distance <= 1 ? "auto" : "metadata"}
               muted={muted}
               onOpenAuthor={handleOpenAuthor}
-              onOpenOwnProfile={onOpenOwnProfile}
-              currentUserAvatarUrl={currentUserAvatarUrl}
               registerNode={(node) => setNodeRef(item.id, node)}
             />
           );
@@ -213,7 +202,6 @@ export default function Feed({
           muted={muted}
           onToggleMute={() => setMuted((m) => !m)}
           onToggleLike={handleToggleLike}
-          onOpenAuthor={handleOpenAuthor}
           onOpenComments={(v) => setCommentsForId(v.id)}
           onShare={handleShare}
           onReport={(v) => setReportForId(v.id)}
