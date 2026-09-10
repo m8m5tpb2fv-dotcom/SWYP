@@ -83,10 +83,13 @@ export default function VideoActionBar({
           <button
             type="button"
             onClick={() => onOpenComments(item)}
-            className="flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-0.5 text-white"
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center text-white"
           >
-            <MessageCircle size={20} strokeWidth={2} />
-            <span className="text-[10px] leading-none text-white/70">{item.commentsCount}</span>
+            {/* The count sits centered on top of the bubble glyph itself
+                (not below it as a caption) — a bigger, thinner-stroke icon
+                leaves room in the middle for the number to read clearly. */}
+            <MessageCircle size={34} strokeWidth={1.5} />
+            <span className="absolute text-[10px] font-semibold leading-none">{item.commentsCount}</span>
           </button>
 
           <button
