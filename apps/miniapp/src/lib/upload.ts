@@ -12,10 +12,15 @@ export function requestUploadUrl(contentType: string) {
   });
 }
 
-export async function uploadFileToStorage(uploadUrl: string, file: File) {
+// contentType must match exactly what requestUploadUrl() signed the URL with —
+// the presigned URL's signature is bound to a specific Content-Type, and S3
+// rejects the PUT with SignatureDoesNotMatch if the header differs (e.g. when
+// file.type comes back empty for some formats and requestUploadUrl fell back
+// to "video/mp4" while this used the empty string).
+export async function uploadFileToStorage(uploadUrl: string, file: File, contentType: string) {
   const res = await fetch(uploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": file.type },
+    headers: { "Content-Type": contentType },
     body: file,
   });
   if (!res.ok) {

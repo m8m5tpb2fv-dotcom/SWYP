@@ -43,8 +43,9 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
     if (!file) return;
     setStage({ kind: "uploading" });
     try {
-      const { videoId, uploadUrl } = await requestUploadUrl(file.type || "video/mp4");
-      await uploadFileToStorage(uploadUrl, file);
+      const contentType = file.type || "video/mp4";
+      const { videoId, uploadUrl } = await requestUploadUrl(contentType);
+      await uploadFileToStorage(uploadUrl, file, contentType);
       setStage({ kind: "form", videoId });
     } catch (err) {
       setStage({ kind: "error", message: (err as Error).message });
