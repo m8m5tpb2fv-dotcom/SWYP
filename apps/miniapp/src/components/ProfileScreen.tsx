@@ -4,6 +4,7 @@ import { fetchUserProfile, fetchUserVideos, followUser, unfollowUser, type UserP
 import { fetchVideoById, type FeedItem } from "../lib/feed";
 import { subscribeToCreator, unlockVideo } from "../lib/monetization";
 import { hapticLight, hapticSelection } from "../lib/haptics";
+import { displayName as formatDisplayName } from "../lib/format";
 import WebApp from "@twa-dev/sdk";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
 import VideoCard from "./VideoCard";
@@ -13,6 +14,7 @@ import ReportSheet from "./ReportSheet";
 import EditProfileSheet from "./EditProfileSheet";
 import EditVideoSheet from "./EditVideoSheet";
 import GiftPickerSheet from "./GiftPickerSheet";
+import VerifiedBadge from "./VerifiedBadge";
 
 interface Props {
   userId: string;
@@ -75,7 +77,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
     }
   };
 
-  const displayName = profile?.username ?? profile?.firstName ?? "Пользователь";
+  const displayName = profile ? formatDisplayName(profile) : "Пользователь";
 
   const { handleToggleLike, handleShare } = useVideoInteractions(setVideos);
 
@@ -187,7 +189,10 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
                 <UserRound size={32} strokeWidth={2} className="text-white/60" />
               )}
             </div>
-            <p className="text-base font-semibold">@{displayName}</p>
+            <p className="flex items-center gap-1 text-base font-semibold">
+              @{displayName}
+              {profile.isVerified && <VerifiedBadge size={16} />}
+            </p>
             {profile.bio && <p className="text-center text-sm text-white/70">{profile.bio}</p>}
 
             <div className="flex gap-6 py-2 text-center text-sm">
@@ -369,6 +374,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
       {editOpen && profile?.isMe && (
         <EditProfileSheet
           initialBio={profile.bio}
+          initialNickname={profile.nickname}
           initialSubscriptionPriceStars={profile.subscriptionPriceStars}
           onClose={() => setEditOpen(false)}
           onSaved={(patch) => setProfile((prev) => (prev ? { ...prev, ...patch } : prev))}
@@ -389,9 +395,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
       {giftOpen && openIndex !== null && videos[openIndex] && (
         <GiftPickerSheet
           recipientUserId={videos[openIndex].author.id}
-          recipientLabel={
-            videos[openIndex].author.username ? `@${videos[openIndex].author.username}` : videos[openIndex].author.firstName ?? "автора"
-          }
+          recipientLabel={`@${formatDisplayName(videos[openIndex].author, "автора")}`}
           videoId={videos[openIndex].id}
           onClose={() => setGiftOpen(false)}
         />

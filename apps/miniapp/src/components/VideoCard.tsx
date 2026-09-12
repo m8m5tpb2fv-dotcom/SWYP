@@ -3,8 +3,9 @@ import type { SyntheticEvent, TouchEvent as ReactTouchEvent } from "react";
 import { Eye, Heart, Lock, Play, UserRound } from "lucide-react";
 import WebApp from "@twa-dev/sdk";
 import type { FeedItem } from "../lib/feed";
-import { formatCount } from "../lib/format";
+import { formatCount, displayName } from "../lib/format";
 import { unlockVideo } from "../lib/monetization";
+import VerifiedBadge from "./VerifiedBadge";
 
 interface Props {
   item: FeedItem;
@@ -227,7 +228,7 @@ export default function VideoCard({
     }, DOUBLE_TAP_WINDOW_MS);
   };
 
-  const authorLabel = item.author.username ?? item.author.firstName ?? "автор";
+  const authorLabel = displayName(item.author, "автор");
   const locked = item.isPremium && !item.isUnlocked;
 
   const handleUnlock = async () => {
@@ -336,7 +337,10 @@ export default function VideoCard({
                   <UserRound size={13} strokeWidth={2} />
                 )}
               </div>
-              <span className="text-sm font-semibold">@{authorLabel}</span>
+              <span className="flex items-center gap-1 text-sm font-semibold">
+                @{authorLabel}
+                {item.author.isVerified && <VerifiedBadge size={14} />}
+              </span>
             </button>
             {item.title && <p className="mt-1 line-clamp-2 text-sm">{item.title}</p>}
             {item.hashtags.length > 0 && (

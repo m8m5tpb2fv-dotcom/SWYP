@@ -8,6 +8,7 @@ import GiftPickerSheet from "./GiftPickerSheet";
 import { fetchFeed, fetchVideoById, type FeedItem } from "../lib/feed";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
 import { sendImpression, sendWatch } from "../lib/events";
+import { displayName } from "../lib/format";
 
 interface Props {
   currentUserId: string;
@@ -287,7 +288,7 @@ export default function Feed({
       {giftFor && (
         <GiftPickerSheet
           recipientUserId={giftFor.author.id}
-          recipientLabel={giftFor.author.username ? `@${giftFor.author.username}` : giftFor.author.firstName ?? "автора"}
+          recipientLabel={`@${displayName(giftFor.author, "автора")}`}
           videoId={giftFor.id}
           onClose={() => setGiftFor(null)}
         />

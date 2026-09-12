@@ -7,9 +7,15 @@ import UploadScreen from "./components/UploadScreen";
 import ProfileScreen from "./components/ProfileScreen";
 import SearchScreen from "./components/SearchScreen";
 import SplashScreen from "./components/SplashScreen";
+import RegistrationScreen from "./components/RegistrationScreen";
 
 type AuthState =
   | { status: "loading" }
+  // Shown once, only when the auth response's isNewUser is true — see
+  // RegistrationScreen. `registering` still carries the real user (id,
+  // Telegram-synced fields) since the app needs it either way; only the
+  // nickname/isVerified fields are still pending the registration flow.
+  | { status: "registering"; user: AuthUser }
   | { status: "authenticated"; user: AuthUser }
   | { status: "error"; message: string };
 
@@ -65,7 +71,7 @@ export default function App() {
     }
 
     authenticateWithTelegram(WebApp.initData)
-      .then((user) => setAuth({ status: "authenticated", user }))
+      .then((user) => setAuth({ status: user.isNewUser ? "registering" : "authenticated", user }))
       .catch((err) => setAuth({ status: "error", message: (err as Error).message }));
   }, []);
 
@@ -98,6 +104,15 @@ export default function App() {
       <div className="flex h-full w-full items-center justify-center bg-black px-6 text-center text-white">
         <p className="text-sm text-red-400">{auth.message}</p>
       </div>
+    );
+  }
+
+  if (auth.status === "registering") {
+    return (
+      <RegistrationScreen
+        initialNickname={auth.user.nickname}
+        onDone={(patch) => setAuth({ status: "authenticated", user: { ...auth.user, ...patch } })}
+      />
     );
   }
 

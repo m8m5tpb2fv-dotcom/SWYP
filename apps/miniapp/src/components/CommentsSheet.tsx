@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { UserRound, Send } from "lucide-react";
 import { fetchComments, postComment, deleteComment, type CommentItem } from "../lib/comments";
 import { useSheetTransition } from "../lib/useSheetTransition";
+import { displayName } from "../lib/format";
+import VerifiedBadge from "./VerifiedBadge";
 
 interface Props {
   videoId: string;
@@ -115,7 +117,7 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
             </p>
           )}
           {items.map((comment) => {
-            const authorLabel = comment.author.username ?? comment.author.firstName ?? "Пользователь";
+            const authorLabel = displayName(comment.author);
             return (
               <div key={comment.id} className="flex items-start gap-3 border-b border-white/5 py-3 last:border-none">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10">
@@ -127,7 +129,10 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-semibold text-white/60">{authorLabel}</p>
+                    <p className="flex items-center gap-1 text-xs font-semibold text-white/60">
+                      {authorLabel}
+                      {comment.author.isVerified && <VerifiedBadge size={12} />}
+                    </p>
                     {comment.author.id === currentUserId && (
                       <button
                         type="button"

@@ -3,21 +3,24 @@ import { updateMyProfile } from "../lib/users";
 
 interface Props {
   initialBio: string | null;
+  initialNickname: string | null;
   // null = subscriptions currently off for this creator.
   initialSubscriptionPriceStars: number | null;
   onClose: () => void;
-  onSaved: (patch: { bio: string | null; subscriptionPriceStars: number | null }) => void;
+  onSaved: (patch: { bio: string | null; nickname: string | null; subscriptionPriceStars: number | null }) => void;
 }
 
 const BIO_MAX_LENGTH = 150;
 
 export default function EditProfileSheet({
   initialBio,
+  initialNickname,
   initialSubscriptionPriceStars,
   onClose,
   onSaved,
 }: Props) {
   const [bio, setBio] = useState(initialBio ?? "");
+  const [nickname, setNickname] = useState(initialNickname ?? "");
   const [subscriptionEnabled, setSubscriptionEnabled] = useState(initialSubscriptionPriceStars !== null);
   const [subscriptionPriceStars, setSubscriptionPriceStars] = useState(
     initialSubscriptionPriceStars ? String(initialSubscriptionPriceStars) : "",
@@ -27,6 +30,11 @@ export default function EditProfileSheet({
 
   const handleSave = async () => {
     if (pending) return;
+    const trimmedNickname = nickname.trim();
+    if (trimmedNickname && trimmedNickname.length < 3) {
+      setError("Ник должен быть не короче 3 символов");
+      return;
+    }
     if (subscriptionEnabled && !(Number(subscriptionPriceStars) >= 1)) {
       setError("Укажите цену подписки в звёздах");
       return;
@@ -36,6 +44,7 @@ export default function EditProfileSheet({
     try {
       const result = await updateMyProfile({
         bio,
+        nickname: trimmedNickname || null,
         subscriptionPriceStars: subscriptionEnabled ? Number(subscriptionPriceStars) : null,
       });
       onSaved(result);
@@ -58,6 +67,14 @@ export default function EditProfileSheet({
         </div>
 
         <div className="px-4 py-4">
+          <label className="mb-1 block text-xs font-medium text-gray-500">Ник</label>
+          <input
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value.slice(0, 20))}
+            placeholder="Ваш ник"
+            className="mb-4 w-full rounded-lg border border-gray-200 px-3 py-2 text-base outline-none focus:border-blue-400"
+          />
+
           <label className="mb-1 block text-xs font-medium text-gray-500">О себе</label>
           <textarea
             value={bio}

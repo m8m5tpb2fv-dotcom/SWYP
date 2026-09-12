@@ -11,3 +11,11 @@ export function unlockVideo(videoId: string) {
 export function subscribeToCreator(creatorId: string) {
   return apiFetch<{ invoiceUrl: string }>(`/api/users/${creatorId}/subscribe`, { method: "POST" });
 }
+
+// A permanent, one-time verified-account checkmark. isVerified flips only
+// once the bot's successful_payment handler confirms payment.
+export const VERIFIED_BADGE_PRICE_STARS = 1000;
+
+export function purchaseVerification() {
+  return apiFetch<{ invoiceUrl: string }>("/api/me/verify", { method: "POST" });
+}

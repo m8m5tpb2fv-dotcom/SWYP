@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { UserRound } from "lucide-react";
 import { search, type SearchResults } from "../lib/search";
 import { hapticSelection } from "../lib/haptics";
+import { displayName } from "../lib/format";
+import VerifiedBadge from "./VerifiedBadge";
 
 interface Props {
   onClose: () => void;
@@ -96,7 +98,10 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
                           <UserRound size={18} strokeWidth={2} className="text-white/60" />
                         )}
                       </div>
-                      <span className="text-sm">@{u.username ?? u.firstName ?? "пользователь"}</span>
+                      <span className="flex items-center gap-1 text-sm">
+                        @{displayName(u, "пользователь")}
+                        {u.isVerified && <VerifiedBadge size={13} />}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -119,7 +124,10 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm">{v.title ?? "Без названия"}</p>
-                        <p className="text-xs text-white/40">@{v.author.username ?? v.author.firstName}</p>
+                        <p className="flex items-center gap-1 text-xs text-white/40">
+                          @{displayName(v.author)}
+                          {v.author.isVerified && <VerifiedBadge size={11} />}
+                        </p>
                       </div>
                     </button>
                   ))}

@@ -4,8 +4,10 @@ import type { FeedItem } from "./feed";
 export interface SearchUser {
   id: string;
   username: string | null;
+  nickname: string | null;
   firstName: string | null;
   avatarUrl: string | null;
+  isVerified: boolean;
 }
 
 export interface HashtagResult {

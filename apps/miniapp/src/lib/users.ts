@@ -4,10 +4,12 @@ import type { FeedItem } from "./feed";
 export interface UserProfile {
   id: string;
   username: string | null;
+  nickname: string | null;
   firstName: string | null;
   lastName: string | null;
   avatarUrl: string | null;
   bio: string | null;
+  isVerified: boolean;
   followersCount: number;
   followingCount: number;
   videosCount: number;
@@ -48,13 +50,14 @@ export function unfollowUser(userId: string) {
   });
 }
 
-// bio and subscriptionPriceStars are the only editable fields — username/name/
-// avatar sync from Telegram's own profile on every login, so editing those
-// in-app would just be overwritten next launch. subscriptionPriceStars is
-// omitted entirely to leave it unchanged, or passed as 0/null to turn
-// subscriptions off.
-export function updateMyProfile(payload: { bio: string; subscriptionPriceStars?: number | null }) {
-  return apiFetch<{ bio: string | null; subscriptionPriceStars: number | null }>("/api/me", {
+// bio, nickname and subscriptionPriceStars are the only editable fields —
+// username/name/avatar sync from Telegram's own profile on every login, so
+// editing those in-app would just be overwritten next launch. Every field
+// is optional: omit one entirely to leave it unchanged (used by
+// RegistrationScreen, which only ever sends `nickname`); subscriptionPriceStars
+// specifically also accepts 0/null to turn subscriptions off.
+export function updateMyProfile(payload: { bio?: string; subscriptionPriceStars?: number | null; nickname?: string | null }) {
+  return apiFetch<{ bio: string | null; subscriptionPriceStars: number | null; nickname: string | null }>("/api/me", {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
