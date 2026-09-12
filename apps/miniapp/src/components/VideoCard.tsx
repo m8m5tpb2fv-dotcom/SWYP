@@ -286,8 +286,8 @@ export default function VideoCard({
           <Heart
             size={120}
             strokeWidth={0}
-            fill="#2AABEE"
-            className="animate-like-pop drop-shadow-[0_4px_20px_rgba(0,0,0,0.35)]"
+            fill="white"
+            className="animate-like-pop opacity-90 drop-shadow-[0_4px_20px_rgba(0,0,0,0.35)]"
             onAnimationEnd={() => setShowLikeAnim(false)}
           />
         </div>
