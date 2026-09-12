@@ -1,4 +1,4 @@
-import { Bot, InlineKeyboard } from "grammy";
+import { Bot, GrammyError, InlineKeyboard } from "grammy";
 import { prisma } from "@swyp/database";
 
 // Commands / menu per ТЗ sections 34-35. Auth itself happens inside the Mini App
@@ -206,7 +206,38 @@ bot.catch((err) => console.error("[bot] error", err));
 // right at container start), which would otherwise be an unhandled
 // top-level promise rejection and crash the process outright on Node's
 // default --unhandled-rejections=strict behavior.
-bot.start().catch((err) => {
-  console.error("[bot] failed to start", err);
-  process.exit(1);
-});
+//
+// getUpdates (long polling) only allows ONE active poller per bot token —
+// during a Railway redeploy the old container's in-flight getUpdates call
+// (up to its own 30s timeout) can still be "live" on Telegram's side for a
+// few seconds after the new container starts and tries to poll too,
+// producing a 409 Conflict. Exiting immediately on that (as before) just
+// handed the retry to Railway's restart policy, which could bounce the
+// container faster than the old poll actually expired — occasionally
+// turning a few-second overlap into a longer crash loop. Retrying inside
+// the same process with backoff gives the old poll time to actually clear
+// before trying again, self-healing the common case without needing a
+// manual token rotation.
+const START_MAX_ATTEMPTS = 6;
+
+async function startWithRetry() {
+  for (let attempt = 1; attempt <= START_MAX_ATTEMPTS; attempt++) {
+    try {
+      // Resolves only once the bot is told to stop (e.g. SIGINT/SIGTERM) —
+      // this call blocks for the process's normal lifetime on success.
+      await bot.start();
+      return;
+    } catch (err) {
+      const isConflict = err instanceof GrammyError && err.error_code === 409;
+      if (!isConflict || attempt === START_MAX_ATTEMPTS) {
+        console.error("[bot] failed to start", err);
+        process.exit(1);
+      }
+      const delayMs = attempt * 5000;
+      console.warn(`[bot] getUpdates conflict on attempt ${attempt}/${START_MAX_ATTEMPTS} — retrying in ${delayMs}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
+startWithRetry();
