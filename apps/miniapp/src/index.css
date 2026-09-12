@@ -8,3 +8,19 @@ body,
   height: 100%;
   background: #000;
 }
+
+/* interactive-widget=overlays-content (index.html) stops the layout viewport
+   shrinking on Chrome/Android when the keyboard opens, but WebKit (Telegram's
+   iOS app) ignores that meta tag — WKWebView still auto-scrolls the whole
+   page to bring a focused <input> above the keyboard, independent of any
+   overflow rule, which throws off Feed's snap-scroll alignment the same way.
+   Pinning html/body with position: fixed removes the page-level scroll
+   WKWebView would otherwise perform, so only Feed's own containerRef (still
+   overflow-y-scroll) moves. */
+html,
+body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  overflow: hidden;
+}
