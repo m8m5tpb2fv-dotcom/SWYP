@@ -134,7 +134,7 @@ export default function VideoActionBar({
           onTouchCancel={cancelLikePress}
           className="flex w-16 shrink-0 items-center justify-center"
         >
-          <div className="flex h-16 w-16 flex-col items-center justify-center rounded-full border-[3px] border-black/50 bg-blue-500 shadow-lg">
+          <div className="flex h-16 w-16 flex-col items-center justify-center rounded-full border border-white/25 bg-white/10 shadow-lg backdrop-blur-xl">
             <Heart size={24} strokeWidth={2} fill={item.isLiked ? "white" : "none"} className="text-white" />
             <span className="text-[11px] font-semibold leading-none text-white">{item.likesCount}</span>
           </div>

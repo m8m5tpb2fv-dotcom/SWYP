@@ -253,7 +253,7 @@ export default function VideoCard({
             paused && !suppressPauseIcon ? "opacity-100" : "opacity-0"
           }`}
         >
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#2AABEE] shadow-xl">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/25 bg-white/10 shadow-lg backdrop-blur-xl">
             <Play size={28} strokeWidth={0} fill="white" />
           </div>
         </div>
