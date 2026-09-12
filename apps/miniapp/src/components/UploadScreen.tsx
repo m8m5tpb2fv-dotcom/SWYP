@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { requestUploadUrl, uploadFileToStorage, publishVideo, getVideoStatus } from "../lib/upload";
 import { CATEGORIES } from "../lib/categories";
+import { hapticSelection } from "../lib/haptics";
 
 interface Props {
   onClose: () => void;
@@ -94,13 +95,20 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
   };
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col bg-black text-white">
+    <div className="absolute inset-0 z-20 flex animate-screen-in flex-col bg-black text-white">
       <div
         className="flex items-center justify-between border-b border-white/10 px-4 pb-3"
         style={{ paddingTop: "calc(var(--tg-safe-top, 0px) + 0.75rem)" }}
       >
         <span className="text-sm font-semibold">Создать Short</span>
-        <button type="button" onClick={onClose} className="text-sm text-white/60">
+        <button
+          type="button"
+          onClick={() => {
+            hapticSelection();
+            onClose();
+          }}
+          className="tap-scale text-sm text-white/60"
+        >
           Закрыть
         </button>
       </div>
@@ -185,7 +193,7 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
             <button
               type="button"
               onClick={handlePublish}
-              className="w-full rounded-lg bg-blue-500 py-2 text-sm font-semibold"
+              className="tap-scale w-full rounded-lg bg-blue-500 py-2 text-sm font-semibold"
             >
               Опубликовать
             </button>
@@ -200,7 +208,7 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
             <button
               type="button"
               onClick={onPublished}
-              className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold"
+              className="tap-scale rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold"
             >
               К ленте
             </button>
@@ -213,7 +221,7 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
               <button
                 type="button"
                 onClick={() => setStage({ kind: "form", videoId: stage.videoId! })}
-                className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white"
+                className="tap-scale rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white"
               >
                 Повторить
               </button>

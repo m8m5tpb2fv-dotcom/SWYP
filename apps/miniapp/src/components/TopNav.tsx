@@ -1,4 +1,5 @@
 import { Search, Plus } from "lucide-react";
+import { hapticSelection } from "../lib/haptics";
 
 interface Props {
   onSearch: () => void;
@@ -15,8 +16,11 @@ export default function TopNav({ onSearch, onUpload }: Props) {
     <>
       <button
         type="button"
-        onClick={onSearch}
-        className="pointer-events-auto absolute left-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur-xl"
+        onClick={() => {
+          hapticSelection();
+          onSearch();
+        }}
+        className="tap-scale pointer-events-auto absolute left-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur-xl"
         style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
       >
         <Search size={18} strokeWidth={2} />
@@ -24,8 +28,11 @@ export default function TopNav({ onSearch, onUpload }: Props) {
 
       <button
         type="button"
-        onClick={onUpload}
-        className="pointer-events-auto absolute right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg"
+        onClick={() => {
+          hapticSelection();
+          onUpload();
+        }}
+        className="tap-scale pointer-events-auto absolute right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg"
         style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
       >
         <Plus size={22} strokeWidth={2.5} />

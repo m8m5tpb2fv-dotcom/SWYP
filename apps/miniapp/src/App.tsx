@@ -23,6 +23,17 @@ export default function App() {
   const [sharedVideoResolved, setSharedVideoResolved] = useState(false);
 
   useEffect(() => {
+    // Classic WebKit quirk: iOS Safari/WKWebView (Telegram's iOS app) only
+    // fires :active CSS styles on elements when *some* touchstart listener
+    // exists in the document — otherwise taps skip straight to touchend
+    // and :active never applies. This empty, passive, once-per-load
+    // listener is the standard fix, and unlocks the .tap-scale press
+    // feedback (index.css) for every button in the app without needing a
+    // JS-driven pressed state per button.
+    document.addEventListener("touchstart", () => {}, { passive: true });
+  }, []);
+
+  useEffect(() => {
     WebApp.ready();
     WebApp.expand();
     // expand() only maximizes within the normal viewport (Bot API <8.0 behavior).

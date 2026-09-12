@@ -24,3 +24,35 @@ body {
   width: 100%;
   overflow: hidden;
 }
+
+/* Shared tap-press feedback for every interactive button across the app —
+   one class instead of repeating the same transition/scale utilities on
+   each button, so every button's press animation stays visually identical.
+   transform-only (GPU-friendly, no layout/paint cost) and purely additive:
+   it changes nothing about a button's own size/color/position, only how it
+   moves for the ~100-300ms around a tap. :active needs a touchstart
+   listener bound somewhere in the document to fire at all on iOS Safari/
+   WKWebView (a long-standing WebKit quirk) — see the empty listener added
+   once in App.tsx. */
+.tap-scale {
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tap-scale:active {
+  transform: scale(0.93);
+  transition-duration: 90ms;
+}
+
+/* Respect the OS-level "reduce motion" setting: every transition/animation
+   in the app collapses to effectively instant rather than being skipped —
+   state changes (like toggling, a sheet opening, a screen appearing) still
+   happen, just without the eased motion, so functionality is unaffected. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

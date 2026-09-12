@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { UserRound, Send } from "lucide-react";
 import { fetchComments, postComment, deleteComment, type CommentItem } from "../lib/comments";
+import { useSheetTransition } from "../lib/useSheetTransition";
 
 interface Props {
   videoId: string;
@@ -18,6 +19,7 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const nextCursorRef = useRef<string | null>(null);
+  const { visible, requestClose } = useSheetTransition(onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,13 +82,20 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative flex max-h-[75%] flex-col rounded-t-2xl bg-[#161616] text-white">
+      <div
+        className={`absolute inset-0 bg-black/60 transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"}`}
+        onClick={requestClose}
+      />
+      <div
+        className={`relative flex max-h-[75%] flex-col rounded-t-2xl bg-[#161616] text-white transition-transform duration-200 ease-spring ${
+          visible ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-white/20" />
 
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
           <span className="text-sm font-semibold">Комментарии</span>
-          <button type="button" onClick={onClose} className="text-sm text-white/50">
+          <button type="button" onClick={requestClose} className="tap-scale text-sm text-white/50">
             Закрыть
           </button>
         </div>
@@ -119,7 +128,7 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
                       <button
                         type="button"
                         onClick={() => handleDelete(comment.id)}
-                        className="shrink-0 text-xs text-white/30"
+                        className="tap-scale shrink-0 text-xs text-white/30"
                       >
                         Удалить
                       </button>
@@ -138,7 +147,7 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
               type="button"
               onClick={handleLoadMore}
               disabled={loadingMore}
-              className="w-full py-3 text-center text-xs text-blue-400 disabled:opacity-50"
+              className="tap-scale w-full py-3 text-center text-xs text-blue-400 disabled:opacity-50"
             >
               {loadingMore ? "Загрузка…" : "Загрузить ещё"}
             </button>
@@ -160,7 +169,7 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
           <button
             type="submit"
             disabled={posting || !text.trim()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white disabled:bg-white/10 disabled:text-white/30"
+            className="tap-scale flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white disabled:bg-white/10 disabled:text-white/30"
           >
             <Send size={16} strokeWidth={2} />
           </button>

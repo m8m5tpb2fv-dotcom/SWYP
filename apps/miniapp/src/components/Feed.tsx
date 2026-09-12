@@ -231,6 +231,7 @@ export default function Feed({
                 item={item}
                 active={item.id === activeId && isForeground}
                 preload={distance <= 1 ? "auto" : "metadata"}
+                warm={distance <= 1}
                 muted={muted}
                 onOpenAuthor={handleOpenAuthor}
                 onDoubleTapLike={handleToggleLike}
@@ -245,7 +246,7 @@ export default function Feed({
               <button
                 type="button"
                 onClick={handleRetryPage}
-                className="rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white"
+                className="tap-scale rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white"
               >
                 Повторить
               </button>

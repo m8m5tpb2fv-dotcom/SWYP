@@ -37,11 +37,11 @@ export default function ReportSheet({ videoId, onClose }: Props) {
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative flex flex-col rounded-t-2xl bg-white text-black">
+      <div className="absolute inset-0 animate-fade-in bg-black/50" onClick={onClose} />
+      <div className="relative flex animate-sheet-in flex-col rounded-t-2xl bg-white text-black">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <span className="text-sm font-semibold">Пожаловаться</span>
-          <button type="button" onClick={onClose} className="text-sm text-gray-500">
+          <button type="button" onClick={onClose} className="tap-scale text-sm text-gray-500">
             Отмена
           </button>
         </div>
@@ -56,7 +56,7 @@ export default function ReportSheet({ videoId, onClose }: Props) {
                 type="button"
                 onClick={() => handleReport(r.value)}
                 disabled={pending}
-                className="block w-full px-4 py-3 text-left text-sm disabled:opacity-50"
+                className="tap-scale block w-full px-4 py-3 text-left text-sm disabled:opacity-50"
               >
                 {r.label}
               </button>

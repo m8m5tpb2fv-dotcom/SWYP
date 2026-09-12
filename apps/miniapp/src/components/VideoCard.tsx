@@ -21,6 +21,12 @@ interface Props {
   // videoUrl came back null while locked, so the parent re-fetches the item
   // to get the real, now-signed URL instead of this card trying to play one.
   onUnlocked?: (item: FeedItem) => void;
+  // True for the active card and its immediate neighbors (Feed's own
+  // `distance <= 1`, matching its preload="auto" cutoff) — hints the
+  // browser to keep these specific cards on their own GPU compositor layer
+  // for a smoother swipe, without paying that memory cost for every card
+  // in a long feed.
+  warm?: boolean;
 }
 
 const DOUBLE_TAP_WINDOW_MS = 300;
@@ -42,6 +48,7 @@ export default function VideoCard({
   onDoubleTapLike,
   registerNode,
   onUnlocked,
+  warm,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [unlocking, setUnlocking] = useState(false);
@@ -225,6 +232,7 @@ export default function VideoCard({
       ref={registerNode}
       data-video-id={item.id}
       className="relative h-full w-full shrink-0 snap-start bg-black"
+      style={warm ? { transform: "translate3d(0,0,0)", willChange: "transform" } : undefined}
     >
       {locked ? (
         <>
@@ -244,7 +252,7 @@ export default function VideoCard({
               type="button"
               onClick={handleUnlock}
               disabled={unlocking}
-              className="rounded-full bg-blue-500 px-5 py-2.5 text-sm font-semibold shadow-lg disabled:opacity-60"
+              className="tap-scale rounded-full bg-blue-500 px-5 py-2.5 text-sm font-semibold shadow-lg disabled:opacity-60"
             >
               {unlocking ? "Открываем…" : `Открыть за ${item.priceStars} ⭐`}
             </button>
@@ -296,7 +304,7 @@ export default function VideoCard({
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-black/10">
         <div className="pointer-events-auto p-4 pb-28" style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}>
           <div className="min-w-0 max-w-[75%] text-white">
-            <button type="button" onClick={() => onOpenAuthor(item)} className="flex items-center gap-2">
+            <button type="button" onClick={() => onOpenAuthor(item)} className="tap-scale flex items-center gap-2">
               <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10">
                 {item.author.avatarUrl ? (
                   <img src={item.author.avatarUrl} alt="" className="h-full w-full object-cover" />

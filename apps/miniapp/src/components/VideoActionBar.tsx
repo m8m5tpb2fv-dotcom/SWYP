@@ -1,8 +1,9 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TouchEvent as ReactTouchEvent } from "react";
 import WebApp from "@twa-dev/sdk";
 import { MessageCircle, Heart, Link2, Volume2, VolumeX, Flag, UserRound, Download } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
+import { hapticLight, hapticSelection } from "../lib/haptics";
 
 const GIFT_LONG_PRESS_MS = 500;
 // A press that drags past this distance is a gesture starting on the like
@@ -55,6 +56,18 @@ export default function VideoActionBar({
   const longPressFiredRef = useRef(false);
   const likePressStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
+  // Pops the heart + count on a like (not on unlike, and not on the initial
+  // mount of an already-liked video) — mirrors the double-tap heart's own
+  // "replay via key change" trick in VideoCard.
+  const wasLikedRef = useRef(item.isLiked);
+  const [likePulse, setLikePulse] = useState(0);
+  useEffect(() => {
+    if (item.isLiked && !wasLikedRef.current) {
+      setLikePulse((k) => k + 1);
+    }
+    wasLikedRef.current = item.isLiked;
+  }, [item.isLiked]);
+
   const handleLikePressStart = (e: ReactTouchEvent<HTMLButtonElement>) => {
     if (!canGift) return;
     longPressFiredRef.current = false;
@@ -91,6 +104,7 @@ export default function VideoActionBar({
       longPressFiredRef.current = false;
       return;
     }
+    hapticLight();
     onToggleLike(item);
   };
 
@@ -111,7 +125,7 @@ export default function VideoActionBar({
         <button
           type="button"
           onClick={() => onOpenComments(item)}
-          className="relative flex h-11 w-11 shrink-0 items-center justify-center text-white"
+          className="tap-scale relative flex h-11 w-11 shrink-0 items-center justify-center text-white"
         >
           {/* The count sits centered on top of the bubble glyph itself
               (not below it as a caption) — a bigger, thinner-stroke icon
@@ -123,7 +137,7 @@ export default function VideoActionBar({
         <button
           type="button"
           onClick={() => onShare(item)}
-          className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+          className="tap-scale flex h-11 w-11 shrink-0 items-center justify-center text-white"
         >
           <Link2 size={20} strokeWidth={2} />
         </button>
@@ -131,7 +145,7 @@ export default function VideoActionBar({
         <button
           type="button"
           onClick={handleDownload}
-          className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+          className="tap-scale flex h-11 w-11 shrink-0 items-center justify-center text-white"
         >
           <Download size={20} strokeWidth={2} />
         </button>
@@ -152,19 +166,30 @@ export default function VideoActionBar({
           onTouchMove={handleLikePressMove}
           onTouchEnd={cancelLikePress}
           onTouchCancel={cancelLikePress}
-          className="flex w-16 shrink-0 items-center justify-center"
+          className="tap-scale flex w-16 shrink-0 items-center justify-center"
         >
           <div className="flex h-16 w-16 flex-col items-center justify-center rounded-full border border-white/25 bg-white/10 shadow-lg backdrop-blur-xl">
-            <Heart size={24} strokeWidth={2} fill={item.isLiked ? "white" : "none"} className="text-white" />
-            <span className="text-[11px] font-semibold leading-none text-white">{item.likesCount}</span>
+            <Heart
+              key={likePulse}
+              size={24}
+              strokeWidth={2}
+              fill={item.isLiked ? "white" : "none"}
+              className={`text-white ${likePulse > 0 ? "animate-pop" : ""}`}
+            />
+            <span key={`count-${likePulse}`} className={`text-[11px] font-semibold leading-none text-white ${likePulse > 0 ? "animate-pop" : ""}`}>
+              {item.likesCount}
+            </span>
           </div>
         </button>
 
         {onOpenOwnProfile && (
           <button
             type="button"
-            onClick={onOpenOwnProfile}
-            className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+            onClick={() => {
+              hapticSelection();
+              onOpenOwnProfile();
+            }}
+            className="tap-scale flex h-11 w-11 shrink-0 items-center justify-center text-white"
           >
             <UserRound size={20} strokeWidth={2} />
           </button>
@@ -173,7 +198,7 @@ export default function VideoActionBar({
         <button
           type="button"
           onClick={onToggleMute}
-          className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+          className="tap-scale flex h-11 w-11 shrink-0 items-center justify-center text-white"
         >
           {muted ? <VolumeX size={20} strokeWidth={2} /> : <Volume2 size={20} strokeWidth={2} />}
         </button>
@@ -181,7 +206,7 @@ export default function VideoActionBar({
         <button
           type="button"
           onClick={() => onReport(item)}
-          className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+          className="tap-scale flex h-11 w-11 shrink-0 items-center justify-center text-white"
         >
           <Flag size={20} strokeWidth={2} />
         </button>

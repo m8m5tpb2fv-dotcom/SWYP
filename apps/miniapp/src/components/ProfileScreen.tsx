@@ -3,6 +3,7 @@ import { X, ChevronDown, UserRound, Pencil, Lock } from "lucide-react";
 import { fetchUserProfile, fetchUserVideos, followUser, unfollowUser, type UserProfile } from "../lib/users";
 import { fetchVideoById, type FeedItem } from "../lib/feed";
 import { subscribeToCreator, unlockVideo } from "../lib/monetization";
+import { hapticLight, hapticSelection } from "../lib/haptics";
 import WebApp from "@twa-dev/sdk";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
 import VideoCard from "./VideoCard";
@@ -60,6 +61,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
 
   const handleToggleFollow = async () => {
     if (!profile || followPending) return;
+    hapticLight();
     setFollowPending(true);
     const wasFollowing = profile.isFollowing;
     setProfile({ ...profile, isFollowing: !wasFollowing, followersCount: profile.followersCount + (wasFollowing ? -1 : 1) });
@@ -143,14 +145,21 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
     // (non-scrolling) box instead of picking up a stale/short containing
     // block from the scrolled content and leaving grid thumbnails visible
     // through the gap at the bottom.
-    <div className="absolute inset-0 z-30 bg-black/55 text-white backdrop-blur-3xl">
+    <div className="absolute inset-0 z-30 animate-screen-in bg-black/55 text-white backdrop-blur-3xl">
       <div className="flex h-full flex-col overflow-y-auto">
         <div
           className="flex items-center justify-between border-b border-white/10 px-4 pb-3"
           style={{ paddingTop: "calc(var(--tg-safe-top, 0px) + 0.75rem)" }}
         >
           <span className="text-sm font-semibold">Профиль</span>
-          <button type="button" onClick={onClose} className="text-sm text-white/60">
+          <button
+            type="button"
+            onClick={() => {
+              hapticSelection();
+              onClose();
+            }}
+            className="tap-scale text-sm text-white/60"
+          >
             Закрыть
           </button>
         </div>
@@ -162,7 +171,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             <button
               type="button"
               onClick={() => setRetryToken((t) => t + 1)}
-              className="rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white"
+              className="tap-scale rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white"
             >
               Повторить
             </button>
@@ -204,7 +213,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
               <button
                 type="button"
                 onClick={() => setEditOpen(true)}
-                className="w-full max-w-xs rounded-lg bg-white/10 py-2 text-sm font-semibold text-white"
+                className="tap-scale w-full max-w-xs rounded-lg bg-white/10 py-2 text-sm font-semibold text-white"
               >
                 Редактировать профиль
               </button>
@@ -213,11 +222,15 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
                 type="button"
                 onClick={handleToggleFollow}
                 disabled={followPending}
-                className={`w-full max-w-xs rounded-lg py-2 text-sm font-semibold ${
+                className={`tap-scale w-full max-w-xs rounded-lg py-2 text-sm font-semibold transition-colors duration-300 ${
                   profile.isFollowing ? "bg-white/10 text-white" : "bg-blue-500 text-white"
                 }`}
               >
-                {profile.isFollowing ? "Вы подписаны" : "Подписаться"}
+                {/* key remount replays fade-in on every toggle — a quick
+                    crossfade instead of the label snapping instantly. */}
+                <span key={profile.isFollowing ? "following" : "follow"} className="inline-block animate-fade-in">
+                  {profile.isFollowing ? "Вы подписаны" : "Подписаться"}
+                </span>
               </button>
             )}
 
@@ -234,7 +247,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
                     type="button"
                     onClick={handleSubscribe}
                     disabled={subscribing}
-                    className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    className="tap-scale w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     {subscribing
                       ? "Открываем оплату…"
@@ -257,7 +270,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
                   type="button"
                   onClick={() => (locked ? handleUnlockFromGrid(v, index) : setOpenIndex(index))}
                   disabled={unlockingId === v.id}
-                  className="relative aspect-[9/16] bg-white/5"
+                  className="tap-scale relative aspect-[9/16] bg-white/5"
                 >
                   {v.thumbnailUrl && (
                     <img src={v.thumbnailUrl} alt={v.title ?? ""} className="h-full w-full object-cover" />
@@ -283,11 +296,14 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
       </div>
 
       {openIndex !== null && videos[openIndex] && !commentsForId && !reportForId && !editVideoOpen && !giftOpen && (
-        <div className="absolute inset-0 z-40 bg-black">
+        <div className="absolute inset-0 z-40 animate-fade-in bg-black">
           <button
             type="button"
-            onClick={() => setOpenIndex(null)}
-            className="absolute right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur"
+            onClick={() => {
+              hapticSelection();
+              setOpenIndex(null);
+            }}
+            className="tap-scale absolute right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur"
             style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
           >
             <X size={18} strokeWidth={2} />
@@ -296,7 +312,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             <button
               type="button"
               onClick={() => setEditVideoOpen(true)}
-              className="absolute right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur"
+              className="tap-scale absolute right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur"
               style={{ top: "calc(var(--tg-safe-top, 0px) + 3.75rem)" }}
             >
               <Pencil size={16} strokeWidth={2} />
@@ -306,7 +322,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             <button
               type="button"
               onClick={() => setOpenIndex((i) => (i !== null ? i + 1 : i))}
-              className="absolute left-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur"
+              className="tap-scale absolute left-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur"
               style={{ top: "calc(var(--tg-safe-top, 0px) + 1rem)" }}
             >
               <ChevronDown size={18} strokeWidth={2} />
@@ -317,6 +333,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             item={videos[openIndex]}
             active
             preload="auto"
+            warm
             muted={muted}
             onOpenAuthor={() => {}}
             onDoubleTapLike={handleToggleLike}

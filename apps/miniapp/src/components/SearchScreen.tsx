@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { UserRound } from "lucide-react";
 import { search, type SearchResults } from "../lib/search";
+import { hapticSelection } from "../lib/haptics";
 
 interface Props {
   onClose: () => void;
@@ -48,7 +49,7 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
   const isEmpty = results && results.users.length === 0 && results.videos.length === 0 && results.hashtags.length === 0;
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col bg-black text-white">
+    <div className="absolute inset-0 z-20 flex animate-screen-in flex-col bg-black text-white">
       <div
         className="flex items-center gap-2 border-b border-white/10 px-4 pb-3"
         style={{ paddingTop: "calc(var(--tg-safe-top, 0px) + 0.75rem)" }}
@@ -60,7 +61,14 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
           placeholder="Поиск пользователей, Shorts, #хэштегов"
           className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-base placeholder:text-white/40"
         />
-        <button type="button" onClick={onClose} className="text-sm text-white/60">
+        <button
+          type="button"
+          onClick={() => {
+            hapticSelection();
+            onClose();
+          }}
+          className="tap-scale text-sm text-white/60"
+        >
           Закрыть
         </button>
       </div>
@@ -79,7 +87,7 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
                       key={u.id}
                       type="button"
                       onClick={() => onOpenProfile(u.id)}
-                      className="flex w-full items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-left"
+                      className="tap-scale flex w-full items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-left"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10">
                         {u.avatarUrl ? (
@@ -104,7 +112,7 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
                       key={v.id}
                       type="button"
                       onClick={() => onOpenProfile(v.author.id)}
-                      className="flex w-full items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-left"
+                      className="tap-scale flex w-full items-center gap-3 rounded-lg bg-white/5 px-3 py-2 text-left"
                     >
                       <div className="h-12 w-9 shrink-0 overflow-hidden rounded bg-white/10">
                         {v.thumbnailUrl && <img src={v.thumbnailUrl} alt="" className="h-full w-full object-cover" />}
@@ -128,7 +136,7 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
                       key={h.tag}
                       type="button"
                       onClick={() => setQuery(h.tag)}
-                      className="rounded-full bg-white/10 px-3 py-1 text-xs"
+                      className="tap-scale rounded-full bg-white/10 px-3 py-1 text-xs"
                     >
                       #{h.tag} · {h.count}
                     </button>

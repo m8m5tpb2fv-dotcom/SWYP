@@ -48,11 +48,11 @@ export default function EditProfileSheet({
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative flex flex-col rounded-t-2xl bg-white text-black">
+      <div className="absolute inset-0 animate-fade-in bg-black/50" onClick={onClose} />
+      <div className="relative flex animate-sheet-in flex-col rounded-t-2xl bg-white text-black">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <span className="text-sm font-semibold">Редактировать профиль</span>
-          <button type="button" onClick={onClose} className="text-sm text-gray-500">
+          <button type="button" onClick={onClose} className="tap-scale text-sm text-gray-500">
             Отмена
           </button>
         </div>
@@ -97,7 +97,7 @@ export default function EditProfileSheet({
             type="button"
             onClick={handleSave}
             disabled={pending}
-            className="mt-3 w-full rounded-lg bg-blue-500 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="tap-scale mt-3 w-full rounded-lg bg-blue-500 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
             {pending ? "Сохранение…" : "Сохранить"}
           </button>
