@@ -4,6 +4,12 @@ import { prisma } from "@swyp/database";
 import { getPresignedPutUrl, getPresignedGetUrl, objectExists, getObjectSize } from "@swyp/storage";
 import { authenticate } from "../plugins/authenticate.js";
 import { videoProcessingQueue } from "../queues.js";
+import { createStarsInvoice } from "../telegram-api.js";
+
+// Flat one-time fee to publish a video flagged as containing profanity/mature
+// language — fixed here, never taken from the client, so /publish's payment
+// check can't be satisfied by a request that just claims a lower amount.
+export const ADULT_CONTENT_PRICE_STARS = 10;
 
 const ALLOWED_CONTENT_TYPES = new Set(["video/mp4", "video/quicktime"]);
 // The presigned PUT URL itself places no ceiling on upload size, and
@@ -63,16 +69,50 @@ export async function uploadRoutes(app: FastifyInstance) {
     return { videoId: video.id, uploadUrl };
   });
 
+  // Mints the Stars invoice for the profanity/mature-language publish fee.
+  // Doesn't touch the video's status or fields — /publish still does the
+  // actual publishing once a payment for this video exists.
+  app.post("/api/videos/:id/adult-invoice", { preHandler: authenticate }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const userId = request.user.sub;
+
+    const video = await prisma.video.findUnique({ where: { id } });
+    if (!video || video.userId !== userId) {
+      return reply.code(404).send({ error: "Video not found" });
+    }
+    if (video.status !== "draft") {
+      return reply.code(400).send({ error: `Video is already ${video.status}` });
+    }
+    if (!video.objectKey || !(await objectExists(video.objectKey))) {
+      return reply.code(400).send({ error: "Video file was not uploaded yet" });
+    }
+
+    const existingPayment = await prisma.adultPublishPayment.findUnique({ where: { videoId: id } });
+    if (existingPayment) {
+      return reply.code(400).send({ error: "This video's publish fee is already paid" });
+    }
+
+    const invoiceUrl = await createStarsInvoice({
+      title: "Публикация с пометкой 18+",
+      description: "Разовая плата за публикацию ролика с ненормативной лексикой",
+      payload: `adultPublish:${id}`,
+      starCount: ADULT_CONTENT_PRICE_STARS,
+    });
+
+    return { invoiceUrl };
+  });
+
   app.post("/api/videos/:id/publish", { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const userId = request.user.sub;
-    const { title, description, category, hashtags, isPremium, priceStars } = (request.body ?? {}) as {
+    const { title, description, category, hashtags, isPremium, priceStars, isAdult } = (request.body ?? {}) as {
       title?: string;
       description?: string;
       category?: string;
       hashtags?: string[];
       isPremium?: boolean;
       priceStars?: number;
+      isAdult?: boolean;
     };
 
     const video = await prisma.video.findUnique({ where: { id } });
@@ -101,6 +141,19 @@ export async function uploadRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: premium.error });
     }
 
+    // The client's isAdult flag is only ever honored if a matching payment
+    // row already exists (created by the bot's successful_payment handler,
+    // never by this route) — a request that just sets isAdult:true with no
+    // paid invoice is rejected outright, same as one that never asked at all.
+    let adultConfirmed = false;
+    if (isAdult) {
+      const payment = await prisma.adultPublishPayment.findUnique({ where: { videoId: id } });
+      if (!payment || payment.userId !== userId) {
+        return reply.code(402).send({ error: "Publishing this as 18+ requires the 10-star fee to be paid first" });
+      }
+      adultConfirmed = true;
+    }
+
     // Conditioned on status still being "draft" at write time, not just at
     // the read above — two concurrent /publish calls for the same video
     // (double-tap, a retried request) would otherwise both pass the
@@ -114,6 +167,7 @@ export async function uploadRoutes(app: FastifyInstance) {
         hashtags: normalizeHashtags(hashtags),
         isPremium: premium.isPremium,
         priceStars: premium.priceStars,
+        isAdult: adultConfirmed,
         status: "processing",
       },
     });

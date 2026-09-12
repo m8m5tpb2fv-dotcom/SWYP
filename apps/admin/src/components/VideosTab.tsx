@@ -78,7 +78,12 @@ export default function VideosTab() {
           <tbody>
             {items.map((v) => (
               <tr key={v.id} className="border-b last:border-none">
-                <td className="px-4 py-2">{v.title ?? "Без названия"}</td>
+                <td className="px-4 py-2">
+                  {v.title ?? "Без названия"}
+                  {v.isAdult && (
+                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">18+</span>
+                  )}
+                </td>
                 <td className="px-4 py-2">@{v.author.username ?? v.author.firstName}</td>
                 <td className="px-4 py-2">
                   <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs">{v.status}</span>
@@ -94,6 +99,11 @@ export default function VideosTab() {
                   {(v.status === "blocked" || v.status === "rejected") && (
                     <button type="button" onClick={() => handleRestore(v.id)} className="text-xs text-green-600">
                       Восстановить
+                    </button>
+                  )}
+                  {v.status === "pending" && (
+                    <button type="button" onClick={() => handleRestore(v.id)} className="text-xs text-green-600">
+                      Одобрить
                     </button>
                   )}
                   {v.status !== "deleted" && (

@@ -23,6 +23,7 @@ export interface FeedItem {
   // active CreatorSubscription to the author, or the viewer being the author.
   isPremium: boolean;
   priceStars: number | null;
+  isAdult: boolean;
   isUnlocked: boolean;
   duration: number | null;
   viewsCount: number;

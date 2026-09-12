@@ -84,13 +84,16 @@ export async function adminRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const video = await prisma.video.findUnique({ where: { id } });
     if (!video) return reply.code(404).send({ error: "Video not found" });
-    // Only "blocked" (a video that WAS published, with real transcoded media)
-    // can go back to "published" here. "rejected" means the transcode itself
-    // never succeeded — videoUrl/thumbnailUrl are still null (only
-    // video-worker's success path ever sets them) — so restoring one
-    // straight to "published" put a permanently broken, unplayable card in
-    // every feed instead of the working video an admin would expect.
-    if (video.status !== "blocked") {
+    // "blocked" (a video that WAS published, with real transcoded media) and
+    // "pending" (a paid isAdult video awaiting its first moderation decision,
+    // see video-worker's processVideo) both already have real transcoded
+    // media — this doubles as the "approve" action for the latter. "rejected"
+    // means the transcode itself never succeeded — videoUrl/thumbnailUrl are
+    // still null (only video-worker's success path ever sets them) — so
+    // restoring one straight to "published" put a permanently broken,
+    // unplayable card in every feed instead of the working video an admin
+    // would expect.
+    if (video.status !== "blocked" && video.status !== "pending") {
       return reply
         .code(400)
         .send({ error: `Cannot restore a video with status ${video.status} — it was never successfully processed` });

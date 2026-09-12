@@ -19,3 +19,13 @@ export const VERIFIED_BADGE_PRICE_STARS = 1000;
 export function purchaseVerification() {
   return apiFetch<{ invoiceUrl: string }>("/api/me/verify", { method: "POST" });
 }
+
+// One-time fee to publish a video flagged as containing profanity/mature
+// language. Doesn't publish anything itself — after Telegram reports "paid",
+// the caller still calls publishVideo(videoId, { isAdult: true, ... }), which
+// the API only allows once this payment is confirmed (see uploads.ts).
+export const ADULT_CONTENT_PRICE_STARS = 10;
+
+export function purchaseAdultPublish(videoId: string) {
+  return apiFetch<{ invoiceUrl: string }>(`/api/videos/${videoId}/adult-invoice`, { method: "POST" });
+}

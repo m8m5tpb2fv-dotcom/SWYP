@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import WebApp from "@twa-dev/sdk";
 import { requestUploadUrl, uploadFileToStorage, publishVideo, getVideoStatus } from "../lib/upload";
+import { purchaseAdultPublish, ADULT_CONTENT_PRICE_STARS } from "../lib/monetization";
 import { CATEGORIES } from "../lib/categories";
 import { hapticSelection } from "../lib/haptics";
 
@@ -29,6 +31,10 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
   const [hashtags, setHashtags] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [priceStars, setPriceStars] = useState("");
+  const [isAdult, setIsAdult] = useState(false);
+  const [showAdultWarning, setShowAdultWarning] = useState(false);
+  const [adultPaying, setAdultPaying] = useState(false);
+  const [adultError, setAdultError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(
@@ -54,13 +60,7 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
     }
   };
 
-  const handlePublish = async () => {
-    if (stage.kind !== "form") return;
-    if (isPremium && !(Number(priceStars) >= 1)) {
-      setStage({ kind: "error", message: "Укажите цену в звёздах для эксклюзивного видео" });
-      return;
-    }
-    const { videoId } = stage;
+  const doPublish = async (videoId: string, adultConfirmed: boolean) => {
     setStage({ kind: "publishing", videoId });
     try {
       await publishVideo(videoId, {
@@ -73,12 +73,13 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
           .filter(Boolean),
         isPremium,
         priceStars: isPremium ? Number(priceStars) : undefined,
+        isAdult: adultConfirmed,
       });
       setStage({ kind: "processing", videoId });
       pollRef.current = setInterval(async () => {
         try {
           const status = await getVideoStatus(videoId);
-          if (status.status === "published") {
+          if (status.status === "published" || status.status === "pending") {
             if (pollRef.current) clearInterval(pollRef.current);
             setStage({ kind: "done" });
           } else if (status.status === "rejected") {
@@ -91,6 +92,43 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
       }, 2000);
     } catch (err) {
       setStage({ kind: "error", message: (err as Error).message, videoId });
+    }
+  };
+
+  const handlePublish = () => {
+    if (stage.kind !== "form") return;
+    if (isPremium && !(Number(priceStars) >= 1)) {
+      setStage({ kind: "error", message: "Укажите цену в звёздах для эксклюзивного видео" });
+      return;
+    }
+    if (isAdult) {
+      setAdultError(null);
+      setShowAdultWarning(true);
+      return;
+    }
+    void doPublish(stage.videoId, false);
+  };
+
+  const handleConfirmAdultPayment = async () => {
+    if (stage.kind !== "form") return;
+    const { videoId } = stage;
+    setAdultPaying(true);
+    setAdultError(null);
+    try {
+      const { invoiceUrl } = await purchaseAdultPublish(videoId);
+      WebApp.openInvoice(invoiceUrl, (status) => {
+        setAdultPaying(false);
+        if (status === "paid") {
+          setShowAdultWarning(false);
+          void doPublish(videoId, true);
+        } else if (status === "failed") {
+          setAdultError("Платёж не прошёл");
+        }
+        // "cancelled" / "pending" — user backed out or it's still settling, stay on the warning
+      });
+    } catch (err) {
+      setAdultPaying(false);
+      setAdultError((err as Error).message);
     }
   };
 
@@ -190,6 +228,16 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
               />
             )}
 
+            <label className="flex items-center justify-between rounded-lg bg-white/10 px-3 py-2.5">
+              <span className="text-sm">Содержит мат (18+)</span>
+              <input
+                type="checkbox"
+                checked={isAdult}
+                onChange={(e) => setIsAdult(e.target.checked)}
+                className="h-5 w-5 accent-blue-500"
+              />
+            </label>
+
             <button
               type="button"
               onClick={handlePublish}
@@ -229,6 +277,46 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
           </div>
         )}
       </div>
+
+      {showAdultWarning && (
+        <div className="absolute inset-0 z-30 flex flex-col justify-end">
+          <div
+            className="absolute inset-0 animate-fade-in bg-black/50"
+            onClick={() => !adultPaying && setShowAdultWarning(false)}
+          />
+          <div className="relative flex max-h-[80%] animate-sheet-in flex-col overflow-y-auto rounded-t-2xl bg-[#161616] px-4 py-5 text-white">
+            <p className="mb-3 text-base font-semibold">⚠️ Контент 18+</p>
+            <p className="mb-2 text-sm text-white/80">
+              Это видео содержит ненормативную лексику. Публикация такого контента стоит {ADULT_CONTENT_PRICE_STARS} ⭐
+              Telegram Stars.
+            </p>
+            <p className="mb-4 text-sm text-white/60">
+              Публикация не гарантирует, что видео будет допущено — администрация SWYP вправе удалить контент и
+              заблокировать аккаунт при нарушении правил платформы. Продолжая, вы подтверждаете, что понимаете и
+              принимаете эти условия.
+            </p>
+            {adultError && <p className="mb-3 text-sm text-red-400">{adultError}</p>}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={adultPaying}
+                onClick={() => setShowAdultWarning(false)}
+                className="tap-scale flex-1 rounded-lg bg-white/10 py-2.5 text-sm font-semibold disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                disabled={adultPaying}
+                onClick={handleConfirmAdultPayment}
+                className="tap-scale flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-semibold disabled:opacity-50"
+              >
+                {adultPaying ? "Открываем оплату…" : `Оплатить ${ADULT_CONTENT_PRICE_STARS} ⭐`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

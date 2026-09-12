@@ -340,6 +340,9 @@ export default function VideoCard({
               <span className="flex items-center gap-1 text-sm font-semibold">
                 @{authorLabel}
                 {item.author.isVerified && <VerifiedBadge size={14} />}
+                {item.isAdult && (
+                  <span className="rounded bg-red-500/80 px-1 text-[10px] font-bold leading-4">18+</span>
+                )}
               </span>
             </button>
             {item.title && <p className="mt-1 line-clamp-2 text-sm">{item.title}</p>}

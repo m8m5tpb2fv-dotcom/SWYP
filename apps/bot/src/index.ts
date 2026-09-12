@@ -48,6 +48,10 @@ const GIFT_PAYLOAD_PREFIX = "giftTx:";
 const VIDEO_UNLOCK_PAYLOAD_PREFIX = "videoUnlock:";
 const SUBSCRIBE_PAYLOAD_PREFIX = "subscribe:";
 const VERIFY_PAYLOAD_PREFIX = "verify:";
+const ADULT_PAYLOAD_PREFIX = "adultPublish:";
+// Kept in sync with services/api/src/routes/uploads.ts's ADULT_CONTENT_PRICE_STARS —
+// separate deployable services, no shared import between them.
+const ADULT_CONTENT_PRICE_STARS = 10;
 // Kept in sync with services/api/src/routes/monetization.ts's SUBSCRIPTION_DAYS —
 // separate deployable services, no shared import between them.
 const SUBSCRIPTION_DAYS = 30;
@@ -97,6 +101,17 @@ bot.on("pre_checkout_query", async (ctx) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.isVerified) {
       await ctx.answerPreCheckoutQuery(false, { error_message: "Аккаунт уже подтверждён или не найден" });
+      return;
+    }
+    await ctx.answerPreCheckoutQuery(true);
+    return;
+  }
+
+  if (payload.startsWith(ADULT_PAYLOAD_PREFIX)) {
+    const videoId = payload.slice(ADULT_PAYLOAD_PREFIX.length);
+    const video = await prisma.video.findUnique({ where: { id: videoId } });
+    if (!video || video.status !== "draft") {
+      await ctx.answerPreCheckoutQuery(false, { error_message: "Видео уже опубликовано или не найдено" });
       return;
     }
     await ctx.answerPreCheckoutQuery(true);
@@ -180,6 +195,54 @@ bot.on("message:successful_payment", async (ctx) => {
     // here for a redelivered update is harmless either way.
     await prisma.user.update({ where: { id: userId }, data: { isVerified: true } });
     await ctx.reply("✅ Аккаунт подтверждён! Значок появится в приложении.");
+    return;
+  }
+
+  if (payload.startsWith(ADULT_PAYLOAD_PREFIX)) {
+    const videoId = payload.slice(ADULT_PAYLOAD_PREFIX.length);
+    const buyer = await prisma.user.findUnique({ where: { telegramId: String(ctx.from.id) } });
+    const video = buyer ? await prisma.video.findUnique({ where: { id: videoId } }) : null;
+
+    // Anything unexpected here (wrong owner, wrong amount, already paid —
+    // e.g. the user tapped "Оплатить" twice and both invoices got paid)
+    // means this specific charge shouldn't grant anything: refund it rather
+    // than silently keep stars for a publish that already happened another way.
+    const alreadyPaid = video ? await prisma.adultPublishPayment.findUnique({ where: { videoId } }) : null;
+    const invalid =
+      !buyer || !video || video.userId !== buyer.id || payment.total_amount !== ADULT_CONTENT_PRICE_STARS || alreadyPaid;
+
+    if (invalid) {
+      try {
+        await ctx.api.refundStarPayment(ctx.from.id, payment.telegram_payment_charge_id);
+        await ctx.reply("Платёж возвращён — эта публикация уже оплачена или недоступна.");
+      } catch (refundErr) {
+        console.error("[bot] adult publish fee refund failed", refundErr);
+      }
+      return;
+    }
+
+    try {
+      await prisma.adultPublishPayment.create({
+        data: {
+          videoId,
+          userId: buyer.id,
+          priceStars: payment.total_amount,
+          telegramChargeId: payment.telegram_payment_charge_id,
+        },
+      });
+      await ctx.reply("✅ Оплата прошла! Вернись в приложение, чтобы завершить публикацию.");
+    } catch (err) {
+      // Unique constraint race (two payments confirmed for this video at
+      // once) — the other one already created the row, so this charge is a
+      // duplicate too.
+      console.error("[bot] adult publish payment race", err);
+      try {
+        await ctx.api.refundStarPayment(ctx.from.id, payment.telegram_payment_charge_id);
+        await ctx.reply("Платёж возвращён — эта публикация уже оплачена.");
+      } catch (refundErr) {
+        console.error("[bot] adult publish fee refund failed", refundErr);
+      }
+    }
     return;
   }
 

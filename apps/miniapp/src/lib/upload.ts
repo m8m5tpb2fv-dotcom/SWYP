@@ -55,6 +55,9 @@ export interface PublishPayload {
   // requires priceStars (1-100000) — see parsePremiumFields on the API side.
   isPremium?: boolean;
   priceStars?: number;
+  // Only honored by the API when a matching AdultPublishPayment already
+  // exists for this video — see purchaseAdultPublish in lib/monetization.ts.
+  isAdult?: boolean;
 }
 
 export function publishVideo(videoId: string, payload: PublishPayload) {

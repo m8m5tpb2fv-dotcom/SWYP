@@ -46,19 +46,20 @@ model User {
   // lifecycle this codebase doesn't have yet.
   subscriptionPriceStars Int?
 
-  videos              Video[]
-  likes               Like[]
-  comments            Comment[]
-  followers           Follow[]             @relation("Followers")
-  following           Follow[]             @relation("Following")
-  reports             Report[]
-  categoryScores      UserCategoryScore[]
-  views               VideoView[]
-  giftsSent           GiftTransaction[]    @relation("GiftsSent")
-  giftsReceived       GiftTransaction[]    @relation("GiftsReceived")
-  videoUnlocks        VideoUnlock[]
-  subscriptionsBought CreatorSubscription[] @relation("SubscriptionsBought")
-  subscriptionsSold   CreatorSubscription[] @relation("SubscriptionsSold")
+  videos               Video[]
+  likes                Like[]
+  comments             Comment[]
+  followers            Follow[]              @relation("Followers")
+  following            Follow[]              @relation("Following")
+  reports              Report[]
+  categoryScores       UserCategoryScore[]
+  views                VideoView[]
+  giftsSent            GiftTransaction[]     @relation("GiftsSent")
+  giftsReceived        GiftTransaction[]     @relation("GiftsReceived")
+  videoUnlocks         VideoUnlock[]
+  subscriptionsBought  CreatorSubscription[] @relation("SubscriptionsBought")
+  subscriptionsSold    CreatorSubscription[] @relation("SubscriptionsSold")
+  adultPublishPayments AdultPublishPayment[]
 
   @@map("users")
 }
@@ -229,6 +230,12 @@ model Video {
   isPremium  Boolean @default(false)
   priceStars Int?
 
+  // A paid content-warning flag for profanity/mature language, independent of
+  // isPremium — set by the backend only once an AdultPublishPayment row
+  // exists for this video (see routes/uploads.ts), never trusted from the
+  // publish request body directly.
+  isAdult Boolean @default(false)
+
   // Recommendation inputs (ТЗ раздел 5/21/25) — watchTimeSum/completedViewsCount are
   // aggregated from video_watch events by the analytics worker; score is recomputed
   // from all of the above whenever any of them changes.
@@ -240,18 +247,38 @@ model Video {
   updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
 
-  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes    Like[]
-  comments Comment[]
-  reports  Report[]
-  views    VideoView[]
-  gifts    GiftTransaction[]
-  unlocks  VideoUnlock[]
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes        Like[]
+  comments     Comment[]
+  reports      Report[]
+  views        VideoView[]
+  gifts        GiftTransaction[]
+  unlocks      VideoUnlock[]
+  adultPayment AdultPublishPayment?
 
   @@index([userId])
   @@index([status])
   @@index([score])
   @@map("videos")
+}
+
+// Confirms a video's one-time 10-star "contains mature language" publish fee
+// was actually paid — its mere existence is what /publish checks before
+// letting isAdult:true through, never a client-supplied flag or price.
+// One row per video (never per user) since the fee attaches to the content
+// itself, not to who's viewing it.
+model AdultPublishPayment {
+  id               String   @id @default(uuid())
+  videoId          String   @unique
+  userId           String
+  priceStars       Int
+  telegramChargeId String   @unique
+  createdAt        DateTime @default(now())
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("adult_publish_payments")
 }
 
 model Like {

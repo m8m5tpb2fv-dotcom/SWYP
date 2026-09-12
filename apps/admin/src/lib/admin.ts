@@ -36,6 +36,7 @@ export interface AdminVideo {
   status: string;
   category: string | null;
   hashtags: string[];
+  isAdult: boolean;
   videoUrl: string | null;
   thumbnailUrl: string | null;
   viewsCount: number;

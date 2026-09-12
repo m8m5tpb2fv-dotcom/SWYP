@@ -100,13 +100,20 @@ async function processVideo(videoId: string, objectKey: string) {
       await putObjectFile(thumbKey, thumbPath, "image/jpeg");
     }
 
+    // A video flagged isAdult (paid profanity/mature-language publish fee,
+    // see services/api's uploads.ts) goes to "pending" instead of straight to
+    // "published" — every existing feed/search/profile query already filters
+    // on status: "published", so this alone keeps it out of sight until an
+    // admin approves it (services/api's admin.ts /restore).
+    const videoFlags = await prisma.video.findUnique({ where: { id: videoId }, select: { isAdult: true } });
+
     // videoUrl/thumbnailUrl hold object keys, not public links — the bucket is
     // private, so the API signs a time-limited GET URL per request (see
     // toVideoUrls in services/api/src/serializers.ts) rather than storing one.
     await prisma.video.update({
       where: { id: videoId },
       data: {
-        status: "published",
+        status: videoFlags?.isAdult ? "pending" : "published",
         videoUrl: videoKey,
         thumbnailUrl: hasThumbnail ? thumbKey : null,
         width: stream.width ?? null,
