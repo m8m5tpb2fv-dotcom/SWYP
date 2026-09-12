@@ -27,13 +27,28 @@ async function processVideo(videoId: string, objectKey: string) {
       "-i",
       inputPath,
       "-vf",
-      "scale='min(1280,iw)':-2",
+      // Caps the LONG edge at 1280 regardless of orientation. The old
+      // "min(1280,iw)" capped iw (width) unconditionally, which is a no-op
+      // for portrait video — nearly all uploads here — since phone-shot
+      // vertical clips already have width <= 1280 (e.g. 1080) while height
+      // runs well past it (1920+, sometimes 2160+). Measured against a real
+      // uploaded video this produced a 1280x2276 output (bitrate ~19.6Mbps,
+      // 11.2MB for under 5s) instead of the intended ~720p-class rendition.
+      "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'",
       "-c:v",
       "libx264",
       "-preset",
       "veryfast",
       "-crf",
       "23",
+      // VBV cap: bounds worst-case bitrate on complex/high-motion footage so
+      // a single hard clip can't balloon file size the way CRF alone can —
+      // same re-encode of the 11.2MB sample above came out at 1.8MB with
+      // this in place, with no visible quality difference.
+      "-maxrate",
+      "2500k",
+      "-bufsize",
+      "5000k",
       "-c:a",
       "aac",
       "-b:a",

@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Shorts</title>
+    <!--
+      Video/thumbnail bytes are served directly from this Railway bucket
+      (Tigris), not proxied through our API — warming the connection (DNS +
+      TCP + TLS) while /api/feed is still in flight overlaps that handshake
+      with the JSON round-trip instead of paying for it serially after the
+      first video URL comes back. Measured ~350ms TLS + ~590ms TTFB cold.
+      Safe if the bucket host ever changes: just becomes an unused hint.
+    -->
+    <link rel="preconnect" href="https://videos-fn-nfujwaqq6ohkxrs.t3.storageapi.dev" />
+    <link rel="dns-prefetch" href="https://videos-fn-nfujwaqq6ohkxrs.t3.storageapi.dev" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
