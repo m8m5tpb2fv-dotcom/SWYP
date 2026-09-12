@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { TouchEvent as ReactTouchEvent } from "react";
+import type { SyntheticEvent, TouchEvent as ReactTouchEvent } from "react";
 import { Eye, Heart, Lock, Play, UserRound } from "lucide-react";
 import WebApp from "@twa-dev/sdk";
 import type { FeedItem } from "../lib/feed";
@@ -27,6 +27,11 @@ interface Props {
   // for a smoother swipe, without paying that memory cost for every card
   // in a long feed.
   warm?: boolean;
+  // Fired when the <video> element itself reports it's no longer muted
+  // while our own `muted` prop still says it should be — see the
+  // onVolumeChange handler below for why that happens and why it needs to
+  // propagate up rather than just flip a local flag.
+  onVolumeUp?: () => void;
 }
 
 const DOUBLE_TAP_WINDOW_MS = 300;
@@ -49,6 +54,7 @@ export default function VideoCard({
   registerNode,
   onUnlocked,
   warm,
+  onVolumeUp,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [unlocking, setUnlocking] = useState(false);
@@ -146,6 +152,23 @@ export default function VideoCard({
       if (tapTimeoutRef.current !== null) window.clearTimeout(tapTimeoutRef.current);
     };
   }, []);
+
+  // There's no web API for "the user pressed the phone's hardware volume-up
+  // button" — but on platforms where the OS routes hardware volume to
+  // whichever <video> currently owns the media session (notably Chrome on
+  // Android), that shows up here as the element unmuting/raising its own
+  // .volume on its own, independent of our in-app mute button. Our `muted`
+  // prop is otherwise fully controlled from Feed/ProfileScreen's own state —
+  // without this, the very next render would just re-apply muted={true}
+  // and silently undo what the hardware button just did. Not reliable on
+  // iOS (WebKit keeps system volume and page media more decoupled), but
+  // there's nothing more direct available and it's a harmless no-op there.
+  const handleVolumeChange = (e: SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    if (muted && !video.muted && video.volume > 0) {
+      onVolumeUp?.();
+    }
+  };
 
   const togglePlayPause = () => {
     const video = videoRef.current;
@@ -274,6 +297,7 @@ export default function VideoCard({
           onTouchMove={handleVideoTouchMove}
           onPlay={() => setPaused(false)}
           onPause={() => setPaused(true)}
+          onVolumeChange={handleVolumeChange}
         />
       )}
 

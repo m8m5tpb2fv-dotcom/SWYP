@@ -19,7 +19,7 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const nextCursorRef = useRef<string | null>(null);
-  const { visible, requestClose } = useSheetTransition(onClose);
+  const { visible, settled, requestClose } = useSheetTransition(onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,8 +87,12 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
         onClick={requestClose}
       />
       <div
-        className={`relative flex max-h-[75%] flex-col rounded-t-2xl bg-[#161616] text-white transition-transform duration-200 ease-spring ${
-          visible ? "translate-y-0" : "translate-y-full"
+        className={`relative flex max-h-[75%] flex-col rounded-t-2xl bg-[#161616] text-white ${
+          // Once settled, drop the transform class entirely rather than
+          // leaving translate-y-0 applied — a resting (non-"none") transform
+          // on this input-holding panel is exactly what broke the iOS
+          // keyboard/video-swipe fix a second time (see useSheetTransition).
+          settled ? "" : `transition-transform duration-200 ease-spring ${visible ? "translate-y-0" : "translate-y-full"}`
         }`}
       >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-white/20" />

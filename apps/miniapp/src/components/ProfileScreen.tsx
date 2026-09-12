@@ -339,6 +339,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             onDoubleTapLike={handleToggleLike}
             registerNode={() => {}}
             onUnlocked={handleUnlocked}
+            onVolumeUp={() => setMuted(false)}
           />
           <VideoActionBar
             item={videos[openIndex]}

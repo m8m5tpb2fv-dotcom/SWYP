@@ -86,8 +86,22 @@ export default {
       animation: {
         pop: "pop 320ms cubic-bezier(0.34,1.56,0.64,1) both",
         "fade-in": "fade-in 200ms ease-out both",
-        "sheet-in": "sheet-in 240ms cubic-bezier(0.22,1,0.36,1) both",
-        "screen-in": "screen-in 260ms cubic-bezier(0.22,1,0.36,1) both",
+        // No forwards/both fill-mode here (unlike pop/fade-in above): a
+        // "both" fill-mode freezes the element at the LAST keyframe's
+        // transform (translateY(0)) forever after the animation ends —
+        // and per spec, any transform value other than the literal keyword
+        // `none` establishes a new containing block for fixed-position
+        // descendants, even an identity one like translateY(0). Sheets and
+        // screens using this hold text inputs (Comments, Search, Upload,
+        // Edit Profile/Video); a lingering transform on their ancestor was
+        // exactly what broke the iOS keyboard/video-swipe fix (which relies
+        // on html/body position:fixed) a second time. Ending fill-mode at
+        // the default ("none") lets the element drop back to its actual
+        // base style (transform: none) the instant the animation finishes —
+        // invisible, since translateY(0)/scale(1) render pixel-identical to
+        // no transform at all.
+        "sheet-in": "sheet-in 240ms cubic-bezier(0.22,1,0.36,1)",
+        "screen-in": "screen-in 260ms cubic-bezier(0.22,1,0.36,1)",
         "like-pop": "like-pop 850ms ease-out forwards",
         "letter-pulse": "letter-pulse 2s cubic-bezier(0.4,0,0.2,1) infinite",
         "letter-sweep": "letter-sweep 2s cubic-bezier(0.4,0,0.2,1) infinite",

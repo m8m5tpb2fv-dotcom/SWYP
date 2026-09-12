@@ -237,6 +237,7 @@ export default function Feed({
                 onDoubleTapLike={handleToggleLike}
                 registerNode={(node) => setNodeRef(item.id, node)}
                 onUnlocked={handleUnlocked}
+                onVolumeUp={() => setMuted(false)}
               />
             );
           })}
