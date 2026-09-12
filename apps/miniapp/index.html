@@ -2,7 +2,13 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!--
+      maximum-scale=1 + user-scalable=no: without this, focusing any text
+      input whose font-size is under 16px makes iOS auto-zoom the whole page
+      in (the classic "everything gets bigger while typing" bug) — this pins
+      the layout so it never scales, regardless of what's focused.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Shorts</title>
     <!--
       Video/thumbnail bytes are served directly from this Railway bucket

@@ -47,7 +47,7 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Поиск пользователей, Shorts, #хэштегов"
-          className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm placeholder:text-white/40"
+          className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-base placeholder:text-white/40"
         />
         <button type="button" onClick={onClose} className="text-sm text-white/60">
           Закрыть

@@ -67,94 +67,102 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
   };
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col overflow-y-auto bg-black text-white">
-      <div
-        className="flex items-center justify-between border-b border-white/10 px-4 pb-3"
-        style={{ paddingTop: "calc(var(--tg-safe-top, 0px) + 0.75rem)" }}
-      >
-        <span className="text-sm font-semibold">Профиль</span>
-        <button type="button" onClick={onClose} className="text-sm text-white/60">
-          Закрыть
-        </button>
-      </div>
+    // Only the header+stats+grid actually scroll — the video viewer and the
+    // sheets below are siblings of that scroll container, not nested inside
+    // it, so their own `absolute inset-0` always resolves against this outer
+    // (non-scrolling) box instead of picking up a stale/short containing
+    // block from the scrolled content and leaving grid thumbnails visible
+    // through the gap at the bottom.
+    <div className="absolute inset-0 z-30 bg-black text-white">
+      <div className="flex h-full flex-col overflow-y-auto">
+        <div
+          className="flex items-center justify-between border-b border-white/10 px-4 pb-3"
+          style={{ paddingTop: "calc(var(--tg-safe-top, 0px) + 0.75rem)" }}
+        >
+          <span className="text-sm font-semibold">Профиль</span>
+          <button type="button" onClick={onClose} className="text-sm text-white/60">
+            Закрыть
+          </button>
+        </div>
 
-      {loading && <p className="py-10 text-center text-sm text-white/60">Загрузка…</p>}
-      {error && <p className="py-10 text-center text-sm text-red-400">{error}</p>}
+        {loading && <p className="py-10 text-center text-sm text-white/60">Загрузка…</p>}
+        {error && <p className="py-10 text-center text-sm text-red-400">{error}</p>}
 
-      {profile && (
-        <div className="flex flex-col items-center gap-3 px-6 py-6">
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-white/10">
-            {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+        {profile && (
+          <div className="flex flex-col items-center gap-3 px-6 py-6">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-white/10">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+              ) : (
+                <UserRound size={32} strokeWidth={2} className="text-white/60" />
+              )}
+            </div>
+            <p className="text-base font-semibold">@{displayName}</p>
+            {profile.bio && <p className="text-center text-sm text-white/70">{profile.bio}</p>}
+
+            <div className="flex gap-6 py-2 text-center text-sm">
+              <div>
+                <p className="font-semibold">{profile.followersCount}</p>
+                <p className="text-white/50">подписчиков</p>
+              </div>
+              <div>
+                <p className="font-semibold">{profile.followingCount}</p>
+                <p className="text-white/50">подписки</p>
+              </div>
+              <div>
+                <p className="font-semibold">{profile.videosCount}</p>
+                <p className="text-white/50">Shorts</p>
+              </div>
+              <div>
+                <p className="font-semibold">{profile.likesCount}</p>
+                <p className="text-white/50">лайков</p>
+              </div>
+            </div>
+
+            {profile.isMe ? (
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="w-full max-w-xs rounded-lg bg-white/10 py-2 text-sm font-semibold text-white"
+              >
+                Редактировать профиль
+              </button>
             ) : (
-              <UserRound size={32} strokeWidth={2} className="text-white/60" />
+              <button
+                type="button"
+                onClick={handleToggleFollow}
+                disabled={followPending}
+                className={`w-full max-w-xs rounded-lg py-2 text-sm font-semibold ${
+                  profile.isFollowing ? "bg-white/10 text-white" : "bg-blue-500 text-white"
+                }`}
+              >
+                {profile.isFollowing ? "Вы подписаны" : "Подписаться"}
+              </button>
             )}
           </div>
-          <p className="text-base font-semibold">@{displayName}</p>
-          {profile.bio && <p className="text-center text-sm text-white/70">{profile.bio}</p>}
+        )}
 
-          <div className="flex gap-6 py-2 text-center text-sm">
-            <div>
-              <p className="font-semibold">{profile.followersCount}</p>
-              <p className="text-white/50">подписчиков</p>
-            </div>
-            <div>
-              <p className="font-semibold">{profile.followingCount}</p>
-              <p className="text-white/50">подписки</p>
-            </div>
-            <div>
-              <p className="font-semibold">{profile.videosCount}</p>
-              <p className="text-white/50">Shorts</p>
-            </div>
-            <div>
-              <p className="font-semibold">{profile.likesCount}</p>
-              <p className="text-white/50">лайков</p>
-            </div>
+        {videos.length > 0 && (
+          <div className="grid grid-cols-3 gap-0.5 px-0.5 pb-6">
+            {videos.map((v, index) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setOpenIndex(index)}
+                className="aspect-[9/16] bg-white/5"
+              >
+                {v.thumbnailUrl && (
+                  <img src={v.thumbnailUrl} alt={v.title ?? ""} className="h-full w-full object-cover" />
+                )}
+              </button>
+            ))}
           </div>
+        )}
 
-          {profile.isMe ? (
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="w-full max-w-xs rounded-lg bg-white/10 py-2 text-sm font-semibold text-white"
-            >
-              Редактировать профиль
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleToggleFollow}
-              disabled={followPending}
-              className={`w-full max-w-xs rounded-lg py-2 text-sm font-semibold ${
-                profile.isFollowing ? "bg-white/10 text-white" : "bg-blue-500 text-white"
-              }`}
-            >
-              {profile.isFollowing ? "Вы подписаны" : "Подписаться"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {videos.length > 0 && (
-        <div className="grid grid-cols-3 gap-0.5 px-0.5 pb-6">
-          {videos.map((v, index) => (
-            <button
-              key={v.id}
-              type="button"
-              onClick={() => setOpenIndex(index)}
-              className="aspect-[9/16] bg-white/5"
-            >
-              {v.thumbnailUrl && (
-                <img src={v.thumbnailUrl} alt={v.title ?? ""} className="h-full w-full object-cover" />
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {profile && videos.length === 0 && !loading && (
-        <p className="py-6 text-center text-sm text-white/40">Пока нет опубликованных Shorts</p>
-      )}
+        {profile && videos.length === 0 && !loading && (
+          <p className="py-6 text-center text-sm text-white/40">Пока нет опубликованных Shorts</p>
+        )}
+      </div>
 
       {openIndex !== null && videos[openIndex] && !commentsForId && !reportForId && (
         <div className="absolute inset-0 z-40 bg-black">

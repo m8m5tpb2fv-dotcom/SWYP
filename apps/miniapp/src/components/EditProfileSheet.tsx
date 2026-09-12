@@ -46,7 +46,7 @@ export default function EditProfileSheet({ initialBio, onClose, onSaved }: Props
             onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX_LENGTH))}
             placeholder="Расскажите о себе"
             rows={3}
-            className="w-full resize-none rounded-lg border border-gray-200 p-3 text-sm outline-none focus:border-blue-400"
+            className="w-full resize-none rounded-lg border border-gray-200 p-3 text-base outline-none focus:border-blue-400"
           />
           <div className="mt-1 flex items-center justify-between">
             <span className="text-xs text-gray-400">

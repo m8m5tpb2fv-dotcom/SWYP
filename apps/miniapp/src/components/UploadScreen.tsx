@@ -129,14 +129,14 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Название"
-              className="w-full rounded-lg bg-white/10 px-3 py-2 text-sm placeholder:text-white/40"
+              className="w-full rounded-lg bg-white/10 px-3 py-2 text-base placeholder:text-white/40"
               maxLength={200}
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Описание"
-              className="w-full rounded-lg bg-white/10 px-3 py-2 text-sm placeholder:text-white/40"
+              className="w-full rounded-lg bg-white/10 px-3 py-2 text-base placeholder:text-white/40"
               rows={2}
               maxLength={2000}
             />
@@ -144,12 +144,12 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
               value={hashtags}
               onChange={(e) => setHashtags(e.target.value)}
               placeholder="#хэштеги через пробел"
-              className="w-full rounded-lg bg-white/10 px-3 py-2 text-sm placeholder:text-white/40"
+              className="w-full rounded-lg bg-white/10 px-3 py-2 text-base placeholder:text-white/40"
             />
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded-lg bg-white/10 px-3 py-2 text-sm"
+              className="w-full rounded-lg bg-white/10 px-3 py-2 text-base"
             >
               {CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value} className="text-black">

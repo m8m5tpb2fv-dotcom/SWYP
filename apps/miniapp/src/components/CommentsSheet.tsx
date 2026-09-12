@@ -142,7 +142,7 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Написать комментарий…"
-            className="min-w-0 flex-1 rounded-full bg-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="min-w-0 flex-1 rounded-full bg-white/10 px-4 py-2.5 text-base text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-blue-500"
             maxLength={2000}
           />
           <button
