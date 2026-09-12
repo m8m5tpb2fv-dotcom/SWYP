@@ -263,7 +263,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
                     <img src={v.thumbnailUrl} alt={v.title ?? ""} className="h-full w-full object-cover" />
                   )}
                   {locked && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-white backdrop-blur-[2px]">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/40 text-white backdrop-blur-xl">
                       <Lock size={16} strokeWidth={2} />
                       <span className="text-[11px] font-semibold leading-none">
                         {unlockingId === v.id ? "…" : `${v.priceStars} ⭐`}

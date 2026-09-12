@@ -229,11 +229,13 @@ export default function VideoCard({
       {locked ? (
         <>
           {item.thumbnailUrl && <img src={item.thumbnailUrl} alt="" className="h-full w-full object-cover" />}
-          {/* Matte darkening (a translucent tint + a light frosted diffusion)
-              instead of the old heavy blur+dim, which hid the preview
-              entirely — the thumbnail stays recognizable as a teaser, just
-              dimmed, with the lock + price as the clear focal point. */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/45 px-8 text-center text-white backdrop-blur-[2px]">
+          {/* Matte darkening — a translucent tint + a Telegram-style strong
+              frosted diffusion (like its own blurred-photo placeholder),
+              rather than the original opacity-40+blur-2xl treatment (hid
+              the preview entirely) or a too-light blur (barely read as
+              "blurred" at all) — the thumbnail still reads as a teaser
+              through the frosting, with the lock + price as the focal point. */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 px-8 text-center text-white backdrop-blur-xl">
             <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10 backdrop-blur-xl">
               <Lock size={24} strokeWidth={2} />
             </div>
