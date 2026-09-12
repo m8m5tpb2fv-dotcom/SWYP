@@ -51,6 +51,14 @@ export default function VideoCard({
   // when playback is blocked by autoplay policy or paused by the active-card
   // effect below — not only on a manual tap.
   const [paused, setPaused] = useState(true);
+  // A freshly-active card is always technically "paused" for a beat before
+  // play() actually starts (React state defaults to true on mount, and even
+  // a warm <video> takes a moment to fire 'play') — showing the icon during
+  // that beat reads as the next video being stuck on pause every single
+  // swipe. Suppresses the icon only for that startup window; a manual tap-
+  // to-pause on an already-active video bypasses this entirely, so that
+  // stays instant.
+  const [suppressPauseIcon, setSuppressPauseIcon] = useState(false);
   const [showLikeAnim, setShowLikeAnim] = useState(false);
   const [likeAnimKey, setLikeAnimKey] = useState(0);
   const lastTapRef = useRef(0);
@@ -63,26 +71,40 @@ export default function VideoCard({
     if (!video) return;
 
     let retry: (() => void) | null = null;
+    let suppressTimer: number | null = null;
 
     if (active) {
-      video.play().catch(() => {
-        // Some WebViews (Telegram's included) still silently block the very
-        // first autoplay attempt before the page has seen any interaction
-        // at all, even for a muted video — this is why only the FIRST
-        // video on cold app open ever showed paused, never ones reached by
-        // swiping (a swipe is itself the interaction that unblocks it).
-        // Retry once on the first touch/click anywhere, then stop listening.
-        retry = () => {
-          video.play().catch(() => {});
-        };
-        document.addEventListener("touchstart", retry, { once: true, passive: true });
-        document.addEventListener("click", retry, { once: true });
-      });
+      setSuppressPauseIcon(true);
+      // Safety net: if play() never settles (or 'play' never fires) for some
+      // reason, stop hiding the icon anyway so a genuinely stuck video isn't
+      // silently unreadable.
+      suppressTimer = window.setTimeout(() => setSuppressPauseIcon(false), 500);
+
+      video
+        .play()
+        .then(() => setSuppressPauseIcon(false))
+        .catch(() => {
+          // Some WebViews (Telegram's included) still silently block the very
+          // first autoplay attempt before the page has seen any interaction
+          // at all, even for a muted video — this is why only the FIRST
+          // video on cold app open ever showed paused, never ones reached by
+          // swiping (a swipe is itself the interaction that unblocks it).
+          // Retry once on the first touch/click anywhere, then stop listening.
+          // Unsuppress right away here — this is a real stuck-paused state,
+          // not startup latency, so the icon should tell the user to tap.
+          setSuppressPauseIcon(false);
+          retry = () => {
+            video.play().catch(() => {});
+          };
+          document.addEventListener("touchstart", retry, { once: true, passive: true });
+          document.addEventListener("click", retry, { once: true });
+        });
     } else {
       video.pause();
     }
 
     return () => {
+      if (suppressTimer !== null) window.clearTimeout(suppressTimer);
       if (retry) {
         document.removeEventListener("touchstart", retry);
         document.removeEventListener("click", retry);
@@ -228,7 +250,7 @@ export default function VideoCard({
       {!locked && (
         <div
           className={`pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-            paused ? "opacity-100" : "opacity-0"
+            paused && !suppressPauseIcon ? "opacity-100" : "opacity-0"
           }`}
         >
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#2AABEE] shadow-xl">
