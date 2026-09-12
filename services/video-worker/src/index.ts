@@ -9,6 +9,15 @@ import { getObjectBytes, putObjectFile } from "@swyp/storage";
 
 const execFileAsync = promisify(execFile);
 
+// ffmpeg/ffprobe had no timeout at all — certain malformed/adversarial input
+// (known bad MOV/MP4 atoms, some codecs) can make ffmpeg hang indefinitely
+// instead of exiting with an error. Since BullMQ's lock-renewal heartbeat
+// runs in this same process independent of the child process, a hung ffmpeg
+// never gets flagged as a stalled job — it just wedges this worker's single
+// job slot forever. A timeout turns that into an ordinary rejected job.
+const TRANSCODE_TIMEOUT_MS = 3 * 60 * 1000;
+const PROBE_TIMEOUT_MS = 30 * 1000;
+
 // Pipeline per ТЗ section 10/11: fetch original -> ffmpeg transcode -> thumbnail -> CDN.
 // MVP does a single web-friendly rendition (capped at 720p) rather than the full
 // 360p/480p/720p/1080p ladder from the ТЗ.
@@ -56,21 +65,29 @@ async function processVideo(videoId: string, objectKey: string) {
       "-movflags",
       "+faststart",
       outputPath,
-    ]);
+    ], { timeout: TRANSCODE_TIMEOUT_MS });
 
-    await execFileAsync("ffmpeg", ["-y", "-i", inputPath, "-ss", "00:00:00.5", "-frames:v", "1", thumbPath]);
+    // Thumbnail extraction is best-effort and isolated from the main
+    // transcode's success/failure: a video ffmpeg can fully transcode but
+    // can't seek a frame out of at exactly 00:00:00.5 (very short or
+    // single-frame clips) previously rejected the ENTIRE video here, even
+    // though a perfectly valid output.mp4 already existed — the video would
+    // just publish with no thumbnail instead.
+    let hasThumbnail = true;
+    try {
+      await execFileAsync("ffmpeg", ["-y", "-i", inputPath, "-ss", "00:00:00.5", "-frames:v", "1", thumbPath], {
+        timeout: PROBE_TIMEOUT_MS,
+      });
+    } catch (err) {
+      hasThumbnail = false;
+      console.error(`[video-worker] thumbnail generation failed for ${videoId}, publishing without one`, err);
+    }
 
-    const { stdout } = await execFileAsync("ffprobe", [
-      "-v",
-      "error",
-      "-select_streams",
-      "v:0",
-      "-show_entries",
-      "stream=width,height,duration",
-      "-of",
-      "json",
-      outputPath,
-    ]);
+    const { stdout } = await execFileAsync(
+      "ffprobe",
+      ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,duration", "-of", "json", outputPath],
+      { timeout: PROBE_TIMEOUT_MS },
+    );
     const probe = JSON.parse(stdout) as { streams?: { width?: number; height?: number; duration?: string }[] };
     const stream = probe.streams?.[0] ?? {};
 
@@ -79,7 +96,9 @@ async function processVideo(videoId: string, objectKey: string) {
     const thumbKey = `${dirKey}/thumb.jpg`;
 
     await putObjectFile(videoKey, outputPath, "video/mp4");
-    await putObjectFile(thumbKey, thumbPath, "image/jpeg");
+    if (hasThumbnail) {
+      await putObjectFile(thumbKey, thumbPath, "image/jpeg");
+    }
 
     // videoUrl/thumbnailUrl hold object keys, not public links — the bucket is
     // private, so the API signs a time-limited GET URL per request (see
@@ -89,7 +108,7 @@ async function processVideo(videoId: string, objectKey: string) {
       data: {
         status: "published",
         videoUrl: videoKey,
-        thumbnailUrl: thumbKey,
+        thumbnailUrl: hasThumbnail ? thumbKey : null,
         width: stream.width ?? null,
         height: stream.height ?? null,
         duration: stream.duration ? Math.round(Number(stream.duration)) : null,

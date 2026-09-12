@@ -72,6 +72,18 @@ export async function objectExists(key: string): Promise<boolean> {
   }
 }
 
+// Returns the uploaded object's size in bytes, or null if it doesn't exist —
+// used by /publish to reject an oversized upload before it's ever enqueued
+// for processing (video-worker buffers the whole file into memory).
+export async function getObjectSize(key: string): Promise<number | null> {
+  try {
+    const res = await s3.send(new HeadObjectCommand({ Bucket: bucket(), Key: key }));
+    return res.ContentLength ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getObjectBytes(key: string): Promise<Buffer> {
   const res = await s3.send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
   const chunks: Buffer[] = [];

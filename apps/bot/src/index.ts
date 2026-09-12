@@ -200,4 +200,13 @@ bot.on("message:successful_payment", async (ctx) => {
 
 bot.catch((err) => console.error("[bot] error", err));
 
-bot.start();
+// bot.catch() only wraps errors from update processing (grammy's middleware
+// error boundary) — it does not cover a rejection from start() itself (e.g.
+// its initial getMe() call failing on a bad token or a DNS/network blip
+// right at container start), which would otherwise be an unhandled
+// top-level promise rejection and crash the process outright on Node's
+// default --unhandled-rejections=strict behavior.
+bot.start().catch((err) => {
+  console.error("[bot] failed to start", err);
+  process.exit(1);
+});
