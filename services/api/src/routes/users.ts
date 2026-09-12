@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { prisma } from "@swyp/database";
+import { Prisma, prisma } from "@swyp/database";
 import { authenticate } from "../plugins/authenticate.js";
 import { toFeedItem, getActiveSubscribedCreatorIds } from "../serializers.js";
 import { parseLimit } from "../pagination.js";
@@ -97,11 +97,11 @@ export async function userRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "User not found" });
     }
 
-    await prisma.follow
-      .create({ data: { followerId, followingId: id } })
-      .catch(() => {
-        // already following — idempotent no-op
-      });
+    await prisma.follow.create({ data: { followerId, followingId: id } }).catch((err) => {
+      const isDuplicate = err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+      if (!isDuplicate) throw err;
+      // already following — idempotent no-op
+    });
 
     const followersCount = await prisma.follow.count({ where: { followingId: id } });
     return { following: true, followersCount };

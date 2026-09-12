@@ -1,11 +1,33 @@
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@swyp/database";
-import { getPresignedPutUrl, getPresignedGetUrl, objectExists } from "@swyp/storage";
+import { getPresignedPutUrl, getPresignedGetUrl, objectExists, getObjectSize } from "@swyp/storage";
 import { authenticate } from "../plugins/authenticate.js";
 import { videoProcessingQueue } from "../queues.js";
 
 const ALLOWED_CONTENT_TYPES = new Set(["video/mp4", "video/quicktime"]);
+// The presigned PUT URL itself places no ceiling on upload size, and
+// video-worker fully buffers the object into memory to transcode it — an
+// unbounded upload is a straightforward OOM vector for that worker. 300MB is
+// generous for a short vertical clip (even a full-length, high-bitrate one)
+// while still bounding worst case.
+const MAX_UPLOAD_BYTES = 300 * 1024 * 1024;
+
+// Same caps the miniapp's <input maxLength> already enforces client-side —
+// these exist so a direct API call (bypassing the client entirely) can't
+// store an unbounded title/description or a huge hashtags array/tag.
+const MAX_TITLE_LENGTH = 200;
+const MAX_DESCRIPTION_LENGTH = 2000;
+const MAX_HASHTAGS = 20;
+const MAX_HASHTAG_LENGTH = 30;
+
+function normalizeHashtags(hashtags: unknown): string[] {
+  if (!Array.isArray(hashtags)) return [];
+  return hashtags
+    .filter((h): h is string => typeof h === "string" && h.trim().length > 0)
+    .slice(0, MAX_HASHTAGS)
+    .map((h) => h.trim().slice(0, MAX_HASHTAG_LENGTH));
+}
 
 // Shared by /publish and the PATCH edit route. Returns an error string on
 // invalid input, or the normalized { isPremium, priceStars } to write.
@@ -69,23 +91,35 @@ export async function uploadRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Video file was not uploaded yet" });
     }
 
+    const size = await getObjectSize(video.objectKey);
+    if (size !== null && size > MAX_UPLOAD_BYTES) {
+      return reply.code(400).send({ error: `Video file is too large (max ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB)` });
+    }
+
     const premium = parsePremiumFields({ isPremium, priceStars });
     if (!premium.ok) {
       return reply.code(400).send({ error: premium.error });
     }
 
-    await prisma.video.update({
-      where: { id },
+    // Conditioned on status still being "draft" at write time, not just at
+    // the read above — two concurrent /publish calls for the same video
+    // (double-tap, a retried request) would otherwise both pass the
+    // status-check earlier and both enqueue a transcode job for it.
+    const { count } = await prisma.video.updateMany({
+      where: { id, status: "draft" },
       data: {
-        title: title?.trim() || null,
-        description: description?.trim() || null,
+        title: title?.trim().slice(0, MAX_TITLE_LENGTH) || null,
+        description: description?.trim().slice(0, MAX_DESCRIPTION_LENGTH) || null,
         category: category ?? null,
-        hashtags: Array.isArray(hashtags) ? hashtags.filter((h) => h.trim().length > 0) : [],
+        hashtags: normalizeHashtags(hashtags),
         isPremium: premium.isPremium,
         priceStars: premium.priceStars,
         status: "processing",
       },
     });
+    if (count === 0) {
+      return reply.code(400).send({ error: "Video is already processing" });
+    }
 
     await videoProcessingQueue.add("process", { videoId: id, objectKey: video.objectKey });
 
@@ -132,10 +166,10 @@ export async function uploadRoutes(app: FastifyInstance) {
     const updated = await prisma.video.update({
       where: { id },
       data: {
-        title: title?.trim() || null,
-        description: description?.trim() || null,
+        title: title?.trim().slice(0, MAX_TITLE_LENGTH) || null,
+        description: description?.trim().slice(0, MAX_DESCRIPTION_LENGTH) || null,
         category: category ?? video.category,
-        hashtags: Array.isArray(hashtags) ? hashtags.filter((h) => h.trim().length > 0) : video.hashtags,
+        hashtags: Array.isArray(hashtags) ? normalizeHashtags(hashtags) : video.hashtags,
         ...(premiumUpdate ?? {}),
       },
     });

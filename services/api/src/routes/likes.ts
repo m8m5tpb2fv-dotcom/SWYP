@@ -49,10 +49,20 @@ export async function likeRoutes(app: FastifyInstance) {
     });
 
     if (existing) {
-      await prisma.$transaction([
-        prisma.like.delete({ where: { id: existing.id } }),
-        prisma.video.update({ where: { id }, data: { likesCount: { decrement: 1 } } }),
-      ]);
+      try {
+        await prisma.$transaction([
+          prisma.like.delete({ where: { id: existing.id } }),
+          prisma.video.update({ where: { id }, data: { likesCount: { decrement: 1 } } }),
+        ]);
+      } catch (err) {
+        // Two concurrent DELETEs (double-tap) can both read `existing` before
+        // either writes — the second one's delete then targets an
+        // already-deleted row (P2025), which is fine to treat as a no-op.
+        const isAlreadyGone = err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025";
+        if (!isAlreadyGone) {
+          throw err;
+        }
+      }
     }
 
     const updated = await prisma.video.findUniqueOrThrow({ where: { id }, select: { likesCount: true } });

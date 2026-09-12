@@ -83,11 +83,19 @@ export async function commentRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: "Not your comment" });
     }
 
-    await prisma.$transaction([
-      prisma.comment.update({ where: { id }, data: { status: "deleted" } }),
-      prisma.video.update({ where: { id: comment.videoId }, data: { commentsCount: { decrement: 1 } } }),
-    ]);
+    // Conditioned on status still being non-deleted at write time (not just
+    // at the read above) — two concurrent DELETEs for the same comment
+    // (double-tap) would otherwise both pass the read-time check above and
+    // both decrement commentsCount for a single logical deletion.
+    const { count } = await prisma.comment.updateMany({
+      where: { id, status: { not: "deleted" } },
+      data: { status: "deleted" },
+    });
+    if (count === 0) {
+      return reply.code(204).send();
+    }
 
+    await prisma.video.update({ where: { id: comment.videoId }, data: { commentsCount: { decrement: 1 } } });
     await analyticsQueue.add("event", { videoId: comment.videoId, kind: "recompute" });
     return reply.code(204).send();
   });

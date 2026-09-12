@@ -4,6 +4,11 @@ import { authenticate } from "../plugins/authenticate.js";
 import { analyticsQueue } from "../queues.js";
 
 const VALID_TYPES = new Set(["video_impression", "video_watch"]);
+// No per-video duration lookup here (would cost a query on every watch
+// event) — this is just a sanity ceiling so a single event can't claim an
+// absurd watch time and skew Video.score, which the analytics worker feeds
+// straight from watchTimeSum.
+const MAX_WATCH_SECONDS = 3600;
 
 // Feeds the recommendation score (ТЗ раздел 5/21/25): the client fires these as a
 // video becomes active / is scrolled away from — see Feed.tsx for the timing logic.
@@ -31,7 +36,7 @@ export async function eventRoutes(app: FastifyInstance) {
       await analyticsQueue.add("event", {
         videoId: body.videoId,
         kind: "watch",
-        watchSeconds: Math.max(0, Math.round(body.watchSeconds ?? 0)),
+        watchSeconds: Math.min(MAX_WATCH_SECONDS, Math.max(0, Math.round(body.watchSeconds ?? 0))),
         completed: Boolean(body.completed),
         userId: request.user.sub,
       });

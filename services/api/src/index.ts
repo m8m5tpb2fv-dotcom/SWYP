@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import jwt from "@fastify/jwt";
 import cors from "@fastify/cors";
+import { Prisma } from "@swyp/database";
 import { requireEnv } from "@swyp/config";
 import { authRoutes } from "./routes/auth.js";
 import { meRoutes } from "./routes/me.js";
@@ -24,6 +25,34 @@ const app = Fastify({ logger: true });
 await app.register(cors, { origin: process.env.CORS_ORIGIN ?? true });
 
 await app.register(jwt, { secret: requireEnv("JWT_SECRET") });
+
+// Fail fast at boot rather than the first time a request happens to touch a
+// missing secret — e.g. TELEGRAM_BOT_TOKEN was previously only read lazily
+// inside route handlers, so a misconfigured deploy would pass health checks
+// and only fail (with a confusing error) on the first login/payment request.
+requireEnv("TELEGRAM_BOT_TOKEN");
+
+// No route handler should ever leak a raw internal error message (a Prisma
+// error, a missing-env-var Error, an unexpected exception) to the client —
+// map the known cases to clean responses and mask everything else as a
+// generic 500, logging the real error server-side instead.
+app.setErrorHandler((err, request, reply) => {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === "P2025") {
+      return reply.code(404).send({ error: "Not found" });
+    }
+    if (err.code === "P2002") {
+      return reply.code(409).send({ error: "Conflict" });
+    }
+  }
+  // Fastify's own validation/parsing errors already carry a real client-error
+  // statusCode and a safe message — pass those through as-is.
+  if (err.statusCode && err.statusCode < 500) {
+    return reply.code(err.statusCode).send({ error: err.message });
+  }
+  app.log.error(err);
+  return reply.code(500).send({ error: "Internal server error" });
+});
 
 app.get("/health", async () => ({ status: "ok" }));
 

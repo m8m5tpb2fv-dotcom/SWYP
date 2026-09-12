@@ -11,9 +11,15 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "initData is required" });
     }
 
+    // requireEnv is intentionally outside the try/catch below — a missing env
+    // var is a deployment misconfiguration, not a bad Telegram signature, and
+    // should surface as a masked 500 (via index.ts's global error handler)
+    // rather than a misleading 401 that also leaked the missing var's name.
+    const botToken = requireEnv("TELEGRAM_BOT_TOKEN");
+
     let verified;
     try {
-      verified = verifyTelegramInitData(initData, requireEnv("TELEGRAM_BOT_TOKEN"));
+      verified = verifyTelegramInitData(initData, botToken);
     } catch (err) {
       return reply.code(401).send({ error: (err as Error).message });
     }

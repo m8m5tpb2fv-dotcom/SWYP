@@ -8,7 +8,9 @@ import { toFeedItem, toAuthor, getActiveSubscribedCreatorIds } from "../serializ
 export async function searchRoutes(app: FastifyInstance) {
   app.get("/api/search", { preHandler: authenticate }, async (request) => {
     const { q } = request.query as { q?: string };
-    const query = (q ?? "").trim();
+    // Capped mainly to bound how many literal ILIKE wildcard characters
+    // (%, _) a single query can inject into the three searches below.
+    const query = (q ?? "").trim().slice(0, 100);
     if (!query) {
       return { videos: [], users: [], hashtags: [] };
     }
