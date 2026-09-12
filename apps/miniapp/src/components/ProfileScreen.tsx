@@ -166,7 +166,16 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
               <ChevronDown size={18} strokeWidth={2} />
             </button>
           )}
-          <VideoCard key={videos[openIndex].id} item={videos[openIndex]} active preload="auto" muted={muted} onOpenAuthor={() => {}} registerNode={() => {}} />
+          <VideoCard
+            key={videos[openIndex].id}
+            item={videos[openIndex]}
+            active
+            preload="auto"
+            muted={muted}
+            onOpenAuthor={() => {}}
+            onDoubleTapLike={handleToggleLike}
+            registerNode={() => {}}
+          />
           <VideoActionBar
             item={videos[openIndex]}
             muted={muted}

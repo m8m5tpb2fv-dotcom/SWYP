@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, Play, UserRound } from "lucide-react";
+import { Eye, Heart, Play, UserRound } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
 import { formatCount } from "../lib/format";
 
@@ -9,18 +9,36 @@ interface Props {
   preload: "auto" | "metadata" | "none";
   muted: boolean;
   onOpenAuthor: (item: FeedItem) => void;
+  // Double-tap-to-like (TikTok/Instagram-style) — always likes, never
+  // unlikes, so a double tap on an already-liked video just replays the
+  // heart animation without calling the API again.
+  onDoubleTapLike?: (item: FeedItem) => void;
   registerNode: (node: HTMLDivElement | null) => void;
 }
 
+const DOUBLE_TAP_WINDOW_MS = 300;
+
 // Playback + caption only — likes/comments/share/mute/report live in
 // VideoActionBar, the floating bottom bar rendered alongside this card.
-export default function VideoCard({ item, active, preload, muted, onOpenAuthor, registerNode }: Props) {
+export default function VideoCard({
+  item,
+  active,
+  preload,
+  muted,
+  onOpenAuthor,
+  onDoubleTapLike,
+  registerNode,
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // Tracks the <video>'s actual paused state (via its own play/pause events,
   // not just the tap handler) so the overlay icon also shows up correctly
   // when playback is blocked by autoplay policy or paused by the active-card
   // effect below — not only on a manual tap.
   const [paused, setPaused] = useState(true);
+  const [showLikeAnim, setShowLikeAnim] = useState(false);
+  const [likeAnimKey, setLikeAnimKey] = useState(0);
+  const lastTapRef = useRef(0);
+  const tapTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -34,7 +52,13 @@ export default function VideoCard({ item, active, preload, muted, onOpenAuthor, 
     }
   }, [active]);
 
-  const handleTap = () => {
+  useEffect(() => {
+    return () => {
+      if (tapTimeoutRef.current !== null) window.clearTimeout(tapTimeoutRef.current);
+    };
+  }, []);
+
+  const togglePlayPause = () => {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -42,6 +66,31 @@ export default function VideoCard({ item, active, preload, muted, onOpenAuthor, 
     } else {
       video.pause();
     }
+  };
+
+  const handleTap = () => {
+    const now = Date.now();
+    const sinceLastTap = now - lastTapRef.current;
+    lastTapRef.current = now;
+
+    if (sinceLastTap < DOUBLE_TAP_WINDOW_MS) {
+      // Second tap of a double tap — cancel the single-tap's pending
+      // play/pause toggle so it doesn't also fire, and like instead.
+      if (tapTimeoutRef.current !== null) {
+        window.clearTimeout(tapTimeoutRef.current);
+        tapTimeoutRef.current = null;
+      }
+      lastTapRef.current = 0;
+      setLikeAnimKey((k) => k + 1);
+      setShowLikeAnim(true);
+      if (!item.isLiked) onDoubleTapLike?.(item);
+      return;
+    }
+
+    tapTimeoutRef.current = window.setTimeout(() => {
+      togglePlayPause();
+      tapTimeoutRef.current = null;
+    }, DOUBLE_TAP_WINDOW_MS);
   };
 
   const authorLabel = item.author.username ?? item.author.firstName ?? "автор";
@@ -72,9 +121,21 @@ export default function VideoCard({ item, active, preload, muted, onOpenAuthor, 
         }`}
       >
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#2AABEE] shadow-xl">
-          <Play size={30} strokeWidth={0} fill="white" className="ml-1" />
+          <Play size={28} strokeWidth={0} fill="white" />
         </div>
       </div>
+
+      {showLikeAnim && (
+        <div key={likeAnimKey} className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <Heart
+            size={120}
+            strokeWidth={0}
+            fill="#2AABEE"
+            className="animate-like-pop drop-shadow-[0_4px_20px_rgba(0,0,0,0.35)]"
+            onAnimationEnd={() => setShowLikeAnim(false)}
+          />
+        </div>
+      )}
 
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-transparent to-black/10">
         <div className="pointer-events-auto p-4 pb-28" style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}>

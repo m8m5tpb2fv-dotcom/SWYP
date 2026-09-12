@@ -207,6 +207,7 @@ export default function Feed({
               preload={distance <= 1 ? "auto" : "metadata"}
               muted={muted}
               onOpenAuthor={handleOpenAuthor}
+              onDoubleTapLike={handleToggleLike}
               registerNode={(node) => setNodeRef(item.id, node)}
             />
           );
