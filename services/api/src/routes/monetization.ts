@@ -4,6 +4,7 @@ import { authenticate } from "../plugins/authenticate.js";
 import { createStarsInvoice } from "../telegram-api.js";
 
 export const SUBSCRIPTION_DAYS = 30;
+export const VERIFIED_BADGE_PRICE_STARS = 1000;
 
 // Exclusive Shorts (per-video unlock) and creator subscriptions. Both just
 // mint a Stars invoice here — the actual VideoUnlock/CreatorSubscription row
@@ -60,12 +61,32 @@ export async function monetizationRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "This creator doesn't offer subscriptions" });
     }
 
-    const displayName = creator.username ? `@${creator.username}` : (creator.firstName ?? "автора");
+    const displayName = creator.nickname ?? (creator.username ? `@${creator.username}` : creator.firstName) ?? "автора";
     const invoiceUrl = await createStarsInvoice({
       title: "Премиум-подписка SWYP",
       description: `Подписка на ${displayName} — ${SUBSCRIPTION_DAYS} дней доступа к эксклюзивным Shorts`,
       payload: `subscribe:${id}`,
       starCount: creator.subscriptionPriceStars,
+    });
+
+    return { invoiceUrl };
+  });
+
+  // A permanent, one-time verified-account checkmark — offered during
+  // registration (RegistrationScreen) but purchasable any time after too.
+  app.post("/api/me/verify", { preHandler: authenticate }, async (request, reply) => {
+    const userId = request.user.sub;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return reply.code(404).send({ error: "User not found" });
+    if (user.isVerified) {
+      return reply.code(400).send({ error: "Already verified" });
+    }
+
+    const invoiceUrl = await createStarsInvoice({
+      title: "Подтверждённый аккаунт",
+      description: "Значок подтверждённого аккаунта SWYP — навсегда",
+      payload: `verify:${userId}`,
+      starCount: VERIFIED_BADGE_PRICE_STARS,
     });
 
     return { invoiceUrl };

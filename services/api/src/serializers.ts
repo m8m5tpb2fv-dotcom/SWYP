@@ -7,10 +7,12 @@ export function toPublicUser(user: User) {
     id: user.id,
     telegramId: user.telegramId,
     username: user.username,
+    nickname: user.nickname,
     firstName: user.firstName,
     lastName: user.lastName,
     avatarUrl: user.avatarUrl,
     bio: user.bio,
+    isVerified: user.isVerified,
     subscriptionPriceStars: user.subscriptionPriceStars,
   };
 }
@@ -20,8 +22,10 @@ export function toAuthor(user: User) {
   return {
     id: user.id,
     username: user.username,
+    nickname: user.nickname,
     firstName: user.firstName,
     avatarUrl: user.avatarUrl,
+    isVerified: user.isVerified,
   };
 }
 

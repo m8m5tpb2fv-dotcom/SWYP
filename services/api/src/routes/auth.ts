@@ -25,6 +25,14 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     const tgUser = verified.user;
+
+    // Checked before the upsert so we can tell the frontend whether this is
+    // a brand-new account (show the registration screen: nickname + the
+    // optional verified-badge offer) versus a returning login — an upsert
+    // alone doesn't report which branch it took.
+    const existing = await prisma.user.findUnique({ where: { telegramId: String(tgUser.id) } });
+    const isNewUser = existing === null;
+
     const user = await prisma.user.upsert({
       where: { telegramId: String(tgUser.id) },
       update: {
@@ -48,6 +56,6 @@ export async function authRoutes(app: FastifyInstance) {
 
     const accessToken = app.jwt.sign({ sub: user.id }, { expiresIn: "30d" });
 
-    return { access_token: accessToken, user: toPublicUser(user) };
+    return { access_token: accessToken, user: toPublicUser(user), isNewUser };
   });
 }

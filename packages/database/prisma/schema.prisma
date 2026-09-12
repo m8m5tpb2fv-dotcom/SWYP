@@ -28,6 +28,17 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  // A user-chosen in-app handle, separate from `username` — the latter is
+  // synced from Telegram's own profile on every login (see routes/auth.ts)
+  // and would just overwrite anything set here. Null until the user sets
+  // one during registration; display logic everywhere falls back to
+  // username/firstName when it's unset.
+  nickname String? @unique
+
+  // One-time Stars purchase (see routes/monetization.ts) — a permanent
+  // verified-account checkmark, not tied to any subscription or expiry.
+  isVerified Boolean @default(false)
+
   // Null = this creator doesn't sell subscriptions. Set by the creator
   // themselves (PATCH /api/me) — buying one is a flat, non-recurring 30-day
   // pass (see CreatorSubscription) rather than Telegram's actual recurring

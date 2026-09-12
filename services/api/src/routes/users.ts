@@ -38,10 +38,12 @@ export async function userRoutes(app: FastifyInstance) {
     return {
       id: user.id,
       username: user.username,
+      nickname: user.nickname,
       firstName: user.firstName,
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
       bio: user.bio,
+      isVerified: user.isVerified,
       followersCount,
       followingCount,
       videosCount,
