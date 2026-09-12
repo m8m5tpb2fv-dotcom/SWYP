@@ -72,6 +72,15 @@ export default function VideoCard({
 
     let retry: (() => void) | null = null;
     let suppressTimer: number | null = null;
+    // play() is async — if this card goes inactive again before it settles
+    // (a quick swipe onto this video and immediately back off), the .catch()
+    // below used to still run and register a document-level retry listener
+    // that nothing would ever clean up (this effect's own cleanup had
+    // already run by then, with `retry` still null). That orphaned listener
+    // would later fire on literally the next tap anywhere in the app and
+    // force-play this specific, by-then off-screen video. Guard every
+    // deferred callback on this flag instead.
+    let cancelled = false;
 
     if (active) {
       setSuppressPauseIcon(true);
@@ -82,8 +91,11 @@ export default function VideoCard({
 
       video
         .play()
-        .then(() => setSuppressPauseIcon(false))
+        .then(() => {
+          if (!cancelled) setSuppressPauseIcon(false);
+        })
         .catch(() => {
+          if (cancelled) return;
           // Some WebViews (Telegram's included) still silently block the very
           // first autoplay attempt before the page has seen any interaction
           // at all, even for a muted video — this is why only the FIRST
@@ -101,9 +113,19 @@ export default function VideoCard({
         });
     } else {
       video.pause();
+      // A single-tap-to-pause toggle scheduled (see handleTap's tapTimeoutRef)
+      // while this card was still active would otherwise fire ~300ms after
+      // swiping away and resume playback (and audio) on this now off-screen
+      // video, since togglePlayPause just checks video.paused with no
+      // awareness of whether the card is still the active one.
+      if (tapTimeoutRef.current !== null) {
+        window.clearTimeout(tapTimeoutRef.current);
+        tapTimeoutRef.current = null;
+      }
     }
 
     return () => {
+      cancelled = true;
       if (suppressTimer !== null) window.clearTimeout(suppressTimer);
       if (retry) {
         document.removeEventListener("touchstart", retry);

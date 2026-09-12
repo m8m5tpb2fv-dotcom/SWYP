@@ -16,7 +16,9 @@ export default function GiftPickerSheet({ recipientUserId, recipientLabel, video
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadGifts = () => {
+    setPhase("loading");
+    setError(null);
     fetchGifts()
       .then((items) => {
         setGifts(items);
@@ -26,7 +28,25 @@ export default function GiftPickerSheet({ recipientUserId, recipientLabel, video
         setError((err as Error).message);
         setPhase("error");
       });
+  };
+
+  useEffect(() => {
+    loadGifts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The error phase covers two different failures that dead-ended into just
+  // "Закрыть" before: the initial gift-list load, and a purchase attempt.
+  // Gifts are already loaded by the time a purchase can fail, so retrying
+  // that case just goes back to picking instead of re-fetching the list.
+  const handleRetry = () => {
+    if (gifts.length > 0) {
+      setError(null);
+      setPhase("picking");
+    } else {
+      loadGifts();
+    }
+  };
 
   const handlePick = async (gift: Gift) => {
     setPhase("paying");
@@ -64,7 +84,16 @@ export default function GiftPickerSheet({ recipientUserId, recipientLabel, video
         <div className="px-4 py-4">
           {phase === "loading" && <p className="py-6 text-center text-sm text-white/50">Загрузка…</p>}
           {phase === "error" && (
-            <p className="py-6 text-center text-sm text-red-400">{error ?? "Что-то пошло не так"}</p>
+            <div className="flex flex-col items-center gap-3 py-6">
+              <p className="text-center text-sm text-red-400">{error ?? "Что-то пошло не так"}</p>
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="rounded-full bg-blue-500 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Повторить
+              </button>
+            </div>
           )}
           {phase === "sent" && <p className="py-6 text-center text-sm text-white">🎁 Подарок отправлен!</p>}
           {phase === "paying" && <p className="py-6 text-center text-sm text-white/50">Открываем оплату…</p>}

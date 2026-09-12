@@ -1,4 +1,4 @@
-import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import WebApp from "@twa-dev/sdk";
 import { likeVideo, unlikeVideo, shareVideo, type FeedItem } from "./feed";
 
@@ -12,6 +12,13 @@ const APP_SHORT_NAME = "SWYP";
 // overlay (App.tsx) — all three render a VideoCard/VideoActionBar pair over
 // their own list of FeedItems and need the same like/share behavior.
 export function useVideoInteractions(setItems: Dispatch<SetStateAction<FeedItem[]>>) {
+  // A fast double-tap (like, then immediately unlike) fires two requests
+  // that can resolve out of order over a mobile connection — without this,
+  // whichever response happens to arrive last would win regardless of which
+  // action the user actually did last. Tracks the latest in-flight request
+  // per video so a stale response is ignored instead of clobbering state.
+  const likeSeqRef = useRef(new Map<string, number>());
+
   const handleToggleLike = useCallback(
     (item: FeedItem) => {
       const wasLiked = item.isLiked;
@@ -20,14 +27,21 @@ export function useVideoInteractions(setItems: Dispatch<SetStateAction<FeedItem[
           v.id === item.id ? { ...v, isLiked: !wasLiked, likesCount: v.likesCount + (wasLiked ? -1 : 1) } : v,
         ),
       );
+
+      const seq = (likeSeqRef.current.get(item.id) ?? 0) + 1;
+      likeSeqRef.current.set(item.id, seq);
+      const isStillLatest = () => likeSeqRef.current.get(item.id) === seq;
+
       const request = wasLiked ? unlikeVideo(item.id) : likeVideo(item.id);
       request
         .then((result) => {
+          if (!isStillLatest()) return;
           setItems((prev) =>
             prev.map((v) => (v.id === item.id ? { ...v, isLiked: result.liked, likesCount: result.likesCount } : v)),
           );
         })
         .catch(() => {
+          if (!isStillLatest()) return;
           setItems((prev) =>
             prev.map((v) => (v.id === item.id ? { ...v, isLiked: wasLiked, likesCount: item.likesCount } : v)),
           );

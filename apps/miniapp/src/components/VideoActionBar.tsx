@@ -1,9 +1,14 @@
 import { useRef } from "react";
+import type { TouchEvent as ReactTouchEvent } from "react";
 import WebApp from "@twa-dev/sdk";
 import { MessageCircle, Heart, Link2, Volume2, VolumeX, Flag, UserRound, Download } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
 
 const GIFT_LONG_PRESS_MS = 500;
+// A press that drags past this distance is a gesture starting on the like
+// button (e.g. the very start of a swipe), not a deliberate hold — same
+// threshold idea as VideoCard's own tap-vs-swipe disambiguation.
+const LIKE_PRESS_MOVE_THRESHOLD_PX = 10;
 
 interface Props {
   item: FeedItem;
@@ -48,10 +53,13 @@ export default function VideoActionBar({
   const canGift = Boolean(onOpenGift) && item.author.id !== currentUserId;
   const longPressTimerRef = useRef<number | null>(null);
   const longPressFiredRef = useRef(false);
+  const likePressStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
-  const handleLikePressStart = () => {
+  const handleLikePressStart = (e: ReactTouchEvent<HTMLButtonElement>) => {
     if (!canGift) return;
     longPressFiredRef.current = false;
+    const t = e.touches[0];
+    likePressStartPosRef.current = { x: t.clientX, y: t.clientY };
     longPressTimerRef.current = window.setTimeout(() => {
       longPressFiredRef.current = true;
       onOpenGift?.(item);
@@ -63,6 +71,17 @@ export default function VideoActionBar({
       window.clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+  };
+
+  // Without this, pressing down on the like button and dragging away without
+  // lifting (e.g. a swipe gesture that happens to start on it) still fired
+  // the long-press timer — only touchend/touchcancel cancelled it before.
+  const handleLikePressMove = (e: ReactTouchEvent<HTMLButtonElement>) => {
+    const start = likePressStartPosRef.current;
+    if (!start) return;
+    const t = e.touches[0];
+    const distance = Math.hypot(t.clientX - start.x, t.clientY - start.y);
+    if (distance > LIKE_PRESS_MOVE_THRESHOLD_PX) cancelLikePress();
   };
 
   const handleLikeClick = () => {
@@ -130,6 +149,7 @@ export default function VideoActionBar({
           type="button"
           onClick={handleLikeClick}
           onTouchStart={handleLikePressStart}
+          onTouchMove={handleLikePressMove}
           onTouchEnd={cancelLikePress}
           onTouchCancel={cancelLikePress}
           className="flex w-16 shrink-0 items-center justify-center"

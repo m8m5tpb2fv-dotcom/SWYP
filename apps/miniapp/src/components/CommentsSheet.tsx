@@ -16,6 +16,7 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const nextCursorRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -36,12 +37,18 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
   }, [videoId]);
 
   const handleLoadMore = () => {
-    if (!nextCursorRef.current) return;
-    fetchComments(videoId, nextCursorRef.current).then((page) => {
-      setItems((prev) => [...prev, ...page.items]);
-      nextCursorRef.current = page.next_cursor;
-      setHasMore(page.next_cursor !== null);
-    });
+    // Double-tapping the button before the first request resolves used to
+    // fire it twice with the same cursor, appending the same page of
+    // comments twice (and colliding React keys).
+    if (!nextCursorRef.current || loadingMore) return;
+    setLoadingMore(true);
+    fetchComments(videoId, nextCursorRef.current)
+      .then((page) => {
+        setItems((prev) => [...prev, ...page.items]);
+        nextCursorRef.current = page.next_cursor;
+        setHasMore(page.next_cursor !== null);
+      })
+      .finally(() => setLoadingMore(false));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -127,8 +134,13 @@ export default function CommentsSheet({ videoId, currentUserId, onClose, onCount
             );
           })}
           {hasMore && (
-            <button type="button" onClick={handleLoadMore} className="w-full py-3 text-center text-xs text-blue-400">
-              Загрузить ещё
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="w-full py-3 text-center text-xs text-blue-400 disabled:opacity-50"
+            >
+              {loadingMore ? "Загрузка…" : "Загрузить ещё"}
             </button>
           )}
         </div>

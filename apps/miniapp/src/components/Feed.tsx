@@ -41,6 +41,11 @@ export default function Feed({
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Separate from `error` (only shown when the feed has no items at all yet)
+  // — a failed *pagination* fetch previously set `error` too, but with items
+  // already on screen nothing ever rendered it: infinite scroll just went
+  // silently dead with no message and no way to retry.
+  const [pageError, setPageError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [muted, setMuted] = useState(true);
   const [commentsForId, setCommentsForId] = useState<string | null>(null);
@@ -70,8 +75,13 @@ export default function Feed({
       setItems((prev) => (cursor ? [...prev, ...pageItems] : pageItems));
       nextCursorRef.current = page.next_cursor;
       setError(null);
+      setPageError(null);
     } catch (err) {
-      setError((err as Error).message);
+      if (cursor) {
+        setPageError((err as Error).message);
+      } else {
+        setError((err as Error).message);
+      }
     } finally {
       fetchingRef.current = false;
       setLoading(false);
@@ -184,6 +194,10 @@ export default function Feed({
       .catch(() => {});
   }, []);
 
+  const handleRetryPage = useCallback(() => {
+    if (nextCursorRef.current) loadPage(nextCursorRef.current);
+  }, [loadPage]);
+
   const activeIndex = items.findIndex((i) => i.id === activeId);
   const activeItem = activeIndex !== -1 ? items[activeIndex] : null;
 
@@ -225,6 +239,18 @@ export default function Feed({
               />
             );
           })}
+          {pageError && (
+            <div className="flex h-full w-full shrink-0 snap-start flex-col items-center justify-center gap-3 bg-black px-6 text-center">
+              <p className="text-sm text-red-400">{pageError}</p>
+              <button
+                type="button"
+                onClick={handleRetryPage}
+                className="rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white"
+              >
+                Повторить
+              </button>
+            </div>
+          )}
         </div>
       )}
 

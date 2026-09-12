@@ -19,16 +19,19 @@ const REASONS: { value: ReportReason; label: string }[] = [
 export default function ReportSheet({ videoId, onClose }: Props) {
   const [sent, setSent] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleReport = async (reason: ReportReason) => {
     if (pending) return;
     setPending(true);
+    setError(null);
     try {
       await reportVideo(videoId, reason);
       setSent(true);
       setTimeout(onClose, 1200);
-    } catch {
+    } catch (err) {
       setPending(false);
+      setError((err as Error).message);
     }
   };
 
@@ -46,6 +49,7 @@ export default function ReportSheet({ videoId, onClose }: Props) {
           <p className="px-4 py-6 text-center text-sm text-gray-500">Спасибо, жалоба отправлена</p>
         ) : (
           <div className="py-2">
+            {error && <p className="px-4 pb-2 text-xs text-red-500">{error}</p>}
             {REASONS.map((r) => (
               <button
                 key={r.value}

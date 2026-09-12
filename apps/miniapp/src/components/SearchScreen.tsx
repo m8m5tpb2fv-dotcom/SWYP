@@ -12,6 +12,10 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards against an earlier, slower query's response overwriting a later
+  // one's results — e.g. typing "cat" then quickly "dog", where "cat"'s
+  // network round trip happens to finish after "dog"'s.
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -23,10 +27,17 @@ export default function SearchScreen({ onClose, onOpenProfile }: Props) {
     }
     setLoading(true);
     debounceRef.current = setTimeout(() => {
+      const requestId = ++requestIdRef.current;
       search(trimmed)
-        .then(setResults)
-        .catch(() => setResults({ videos: [], users: [], hashtags: [] }))
-        .finally(() => setLoading(false));
+        .then((r) => {
+          if (requestIdRef.current === requestId) setResults(r);
+        })
+        .catch(() => {
+          if (requestIdRef.current === requestId) setResults({ videos: [], users: [], hashtags: [] });
+        })
+        .finally(() => {
+          if (requestIdRef.current === requestId) setLoading(false);
+        });
     }, 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);

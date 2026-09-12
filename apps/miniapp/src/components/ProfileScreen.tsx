@@ -34,10 +34,15 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
   const [giftOpen, setGiftOpen] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  // Bumped by the retry button below — the load effect otherwise only
+  // re-runs on a userId change, so a failed load previously had no way to
+  // try again short of closing and reopening the whole profile screen.
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     Promise.all([fetchUserProfile(userId), fetchUserVideos(userId)])
       .then(([p, v]) => {
         if (cancelled) return;
@@ -49,7 +54,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, retryToken]);
 
   const handleToggleFollow = async () => {
     if (!profile || followPending) return;
@@ -126,7 +131,18 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
         </div>
 
         {loading && <p className="py-10 text-center text-sm text-white/60">Загрузка…</p>}
-        {error && <p className="py-10 text-center text-sm text-red-400">{error}</p>}
+        {error && (
+          <div className="flex flex-col items-center gap-3 py-10">
+            <p className="text-center text-sm text-red-400">{error}</p>
+            <button
+              type="button"
+              onClick={() => setRetryToken((t) => t + 1)}
+              className="rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold text-white"
+            >
+              Повторить
+            </button>
+          </div>
+        )}
 
         {profile && (
           <div className="flex flex-col items-center gap-3 px-6 py-6">

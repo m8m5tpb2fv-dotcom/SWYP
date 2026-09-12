@@ -14,7 +14,11 @@ type Stage =
   | { kind: "publishing"; videoId: string }
   | { kind: "processing"; videoId: string }
   | { kind: "done" }
-  | { kind: "error"; message: string };
+  // videoId is set only when the failure happened AFTER a successful upload
+  // (the publish call itself, or its response) — that's the case where
+  // "Закрыть" used to be the only option and would discard an already-
+  // uploaded file plus everything typed into the form for no reason.
+  | { kind: "error"; message: string; videoId?: string };
 
 export default function UploadScreen({ onClose, onPublished }: Props) {
   const [stage, setStage] = useState<Stage>({ kind: "pick" });
@@ -85,7 +89,7 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
         }
       }, 2000);
     } catch (err) {
-      setStage({ kind: "error", message: (err as Error).message });
+      setStage({ kind: "error", message: (err as Error).message, videoId });
     }
   };
 
@@ -202,7 +206,20 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
             </button>
           </>
         )}
-        {stage.kind === "error" && <p className="text-center text-sm text-red-400">{stage.message}</p>}
+        {stage.kind === "error" && (
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-center text-sm text-red-400">{stage.message}</p>
+            {stage.videoId && (
+              <button
+                type="button"
+                onClick={() => setStage({ kind: "form", videoId: stage.videoId! })}
+                className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Повторить
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
