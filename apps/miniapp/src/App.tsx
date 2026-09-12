@@ -90,6 +90,13 @@ export default function App() {
     );
   }
 
+  // Feed's video stays mounted (and playing) underneath every overlay — it
+  // has no way of knowing it's covered. Any screen that plays its own video
+  // on top of it (profile viewer) would otherwise overlap sound with
+  // whatever Feed was already playing; upload/search don't play anything
+  // themselves but Feed's video would keep making noise behind them too.
+  const feedIsForeground = !uploadOpen && !searchOpen && !viewingUserId;
+
   return (
     <div className="relative h-full w-full bg-black">
       <Feed
@@ -100,6 +107,7 @@ export default function App() {
         onOpenUpload={() => setUploadOpen(true)}
         onOpenOwnProfile={() => setViewingUserId(auth.user.id)}
         initialVideo={sharedVideo}
+        isForeground={feedIsForeground}
       />
 
       {uploadOpen && (

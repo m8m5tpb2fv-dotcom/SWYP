@@ -27,6 +27,13 @@ interface Props {
   // recipient lands on it and can immediately keep swiping the real feed,
   // instead of a separate single-video screen blocking further scrolling.
   initialVideo?: FeedItem | null;
+  // Feed stays mounted underneath every overlay (profile, search, upload) —
+  // it has no way of knowing it's covered otherwise, so its video would keep
+  // playing (and making noise) behind whatever's on top of it, including a
+  // second video played from the profile screen. false pauses playback and
+  // stops counting watch time without losing scroll position or activeId,
+  // so it picks back up right where it left off when the overlay closes.
+  isForeground: boolean;
 }
 
 export default function Feed({
@@ -36,6 +43,7 @@ export default function Feed({
   onOpenUpload,
   onOpenOwnProfile,
   initialVideo,
+  isForeground,
 }: Props) {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +146,7 @@ export default function Feed({
       }
     }
 
-    if (activeId) {
+    if (activeId && isForeground) {
       watchStartRef.current = { id: activeId, start: Date.now() };
       if (!impressedRef.current.has(activeId)) {
         impressedRef.current.add(activeId);
@@ -147,7 +155,7 @@ export default function Feed({
     } else {
       watchStartRef.current = null;
     }
-  }, [activeId]);
+  }, [activeId, isForeground]);
 
   useEffect(() => {
     return () => {
@@ -233,7 +241,7 @@ export default function Feed({
               <VideoCard
                 key={item.id}
                 item={item}
-                active={item.id === activeId}
+                active={item.id === activeId && isForeground}
                 preload={distance <= 1 ? "auto" : "metadata"}
                 muted={muted}
                 onOpenAuthor={handleOpenAuthor}
