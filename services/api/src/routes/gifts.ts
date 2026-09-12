@@ -6,6 +6,11 @@ import { authenticate } from "../plugins/authenticate.js";
 
 interface TelegramSticker {
   file_id: string;
+  // Animated/video gifts (the vast majority) have is_animated/is_video set
+  // and file_id then points at a .tgs (gzipped Lottie JSON) or .webm — not
+  // something <img> can render. thumbnail is the static JPEG/WEBP preview
+  // frame, which is what actually needs to be shown here.
+  thumbnail?: { file_id: string };
 }
 
 interface TelegramGift {
@@ -68,11 +73,22 @@ export async function giftRoutes(app: FastifyInstance) {
     if (!gift) return reply.code(404).send({ error: "Gift not found" });
 
     const token = requireEnv("TELEGRAM_BOT_TOKEN");
-    const file = await callTelegram<{ file_path: string }>("getFile", { file_id: gift.sticker.file_id });
+    const stickerFileId = gift.sticker.thumbnail?.file_id ?? gift.sticker.file_id;
+    const file = await callTelegram<{ file_path: string }>("getFile", { file_id: stickerFileId });
     const fileRes = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`);
     if (!fileRes.ok || !fileRes.body) return reply.code(502).send({ error: "Failed to fetch sticker" });
 
-    reply.header("Content-Type", fileRes.headers.get("content-type") ?? "image/webp");
+    // Telegram's file server always answers with Content-Type:
+    // application/octet-stream regardless of the actual file — trusting
+    // that (or defaulting only when absent, which never triggers) sends the
+    // browser a WEBP image mislabeled as generic binary, and it may refuse
+    // to render it in <img>. Derive it from the file extension instead.
+    const contentType = file.file_path.endsWith(".png")
+      ? "image/png"
+      : file.file_path.endsWith(".jpg") || file.file_path.endsWith(".jpeg")
+        ? "image/jpeg"
+        : "image/webp";
+    reply.header("Content-Type", contentType);
     reply.header("Cache-Control", "public, max-age=31536000, immutable");
     return reply.send(Readable.fromWeb(fileRes.body as import("stream/web").ReadableStream));
   });
