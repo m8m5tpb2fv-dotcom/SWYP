@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { TouchEvent as ReactTouchEvent } from "react";
 import VideoCard from "./VideoCard";
 import VideoActionBar from "./VideoActionBar";
 import TopNav from "./TopNav";
@@ -9,13 +8,6 @@ import GiftPickerSheet from "./GiftPickerSheet";
 import { fetchFeed, fetchVideoById, type FeedItem } from "../lib/feed";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
 import { sendImpression, sendWatch } from "../lib/events";
-
-// Swipe-right-to-own-profile thresholds: predominantly horizontal (vertical
-// drift under half the horizontal distance, so it doesn't fire during the
-// normal vertical snap-scroll), far enough to be deliberate, fast enough
-// that a slow drag/scroll doesn't accidentally qualify.
-const SWIPE_MIN_DISTANCE_PX = 60;
-const SWIPE_MAX_DURATION_MS = 600;
 
 interface Props {
   currentUserId: string;
@@ -192,41 +184,11 @@ export default function Feed({
       .catch(() => {});
   }, []);
 
-  // Own-profile access needs to work even with an empty/loading feed (no
-  // VideoActionBar to hold its icon then) — a plain right swipe anywhere on
-  // this screen opens it, on top of the icon already in the action bar.
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-
-  const handleTouchStart = useCallback((e: ReactTouchEvent) => {
-    const t = e.touches[0];
-    touchStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
-  }, []);
-
-  const handleTouchEnd = useCallback(
-    (e: ReactTouchEvent) => {
-      const start = touchStartRef.current;
-      touchStartRef.current = null;
-      if (!start) return;
-      const t = e.changedTouches[0];
-      const deltaX = t.clientX - start.x;
-      const deltaY = t.clientY - start.y;
-      const elapsed = Date.now() - start.time;
-      if (
-        deltaX > SWIPE_MIN_DISTANCE_PX &&
-        Math.abs(deltaY) < deltaX * 0.5 &&
-        elapsed < SWIPE_MAX_DURATION_MS
-      ) {
-        onOpenOwnProfile();
-      }
-    },
-    [onOpenOwnProfile],
-  );
-
   const activeIndex = items.findIndex((i) => i.id === activeId);
   const activeItem = activeIndex !== -1 ? items[activeIndex] : null;
 
   return (
-    <div className="relative h-full w-full" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+    <div className="relative h-full w-full">
       {loading && (
         <div className="flex h-full w-full items-center justify-center text-sm text-white/60">Загрузка ленты…</div>
       )}
