@@ -118,7 +118,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
     // (non-scrolling) box instead of picking up a stale/short containing
     // block from the scrolled content and leaving grid thumbnails visible
     // through the gap at the bottom.
-    <div className="absolute inset-0 z-30 bg-black/30 text-white backdrop-blur-2xl">
+    <div className="absolute inset-0 z-30 bg-black/55 text-white backdrop-blur-3xl">
       <div className="flex h-full flex-col overflow-y-auto">
         <div
           className="flex items-center justify-between border-b border-white/10 px-4 pb-3"
