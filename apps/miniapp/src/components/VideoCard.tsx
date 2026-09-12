@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { TouchEvent as ReactTouchEvent } from "react";
 import { Eye, Heart, Play, UserRound } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
 import { formatCount } from "../lib/format";
@@ -17,6 +18,12 @@ interface Props {
 }
 
 const DOUBLE_TAP_WINDOW_MS = 300;
+// A vertical swipe to the next video starts with a touchstart on this same
+// <video> — some mobile WebViews still fire a synthetic click afterward
+// despite the finger having moved well past what any tap gesture would,
+// which was toggling playback (and flashing the pause icon) mid-swipe.
+// Anything past this distance is a scroll, not a tap.
+const TAP_MOVE_THRESHOLD_PX = 12;
 
 // Playback + caption only — likes/comments/share/mute/report live in
 // VideoActionBar, the floating bottom bar rendered alongside this card.
@@ -39,6 +46,8 @@ export default function VideoCard({
   const [likeAnimKey, setLikeAnimKey] = useState(0);
   const lastTapRef = useRef(0);
   const tapTimeoutRef = useRef<number | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const touchMovedPastThresholdRef = useRef(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -68,7 +77,29 @@ export default function VideoCard({
     }
   };
 
+  const handleVideoTouchStart = (e: ReactTouchEvent<HTMLVideoElement>) => {
+    const t = e.touches[0];
+    touchStartPosRef.current = { x: t.clientX, y: t.clientY };
+    touchMovedPastThresholdRef.current = false;
+  };
+
+  const handleVideoTouchMove = (e: ReactTouchEvent<HTMLVideoElement>) => {
+    const start = touchStartPosRef.current;
+    if (!start) return;
+    const t = e.touches[0];
+    const distance = Math.hypot(t.clientX - start.x, t.clientY - start.y);
+    if (distance > TAP_MOVE_THRESHOLD_PX) touchMovedPastThresholdRef.current = true;
+  };
+
   const handleTap = () => {
+    // The finger moved — this click is the browser's aftermath of a swipe
+    // to scroll, not a real tap, so don't toggle playback or count it
+    // toward a double-tap-to-like.
+    if (touchMovedPastThresholdRef.current) {
+      touchMovedPastThresholdRef.current = false;
+      return;
+    }
+
     const now = Date.now();
     const sinceLastTap = now - lastTapRef.current;
     lastTapRef.current = now;
@@ -111,6 +142,8 @@ export default function VideoCard({
         muted={muted}
         preload={preload}
         onClick={handleTap}
+        onTouchStart={handleVideoTouchStart}
+        onTouchMove={handleVideoTouchMove}
         onPlay={() => setPaused(false)}
         onPause={() => setPaused(true)}
       />
