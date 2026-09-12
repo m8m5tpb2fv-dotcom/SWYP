@@ -228,15 +228,13 @@ export default function VideoCard({
     >
       {locked ? (
         <>
-          {item.thumbnailUrl && (
-            <img
-              src={item.thumbnailUrl}
-              alt=""
-              className="h-full w-full scale-110 object-cover opacity-40 blur-2xl"
-            />
-          )}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/30 px-8 text-center text-white">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
+          {item.thumbnailUrl && <img src={item.thumbnailUrl} alt="" className="h-full w-full object-cover" />}
+          {/* Matte darkening (a translucent tint + a light frosted diffusion)
+              instead of the old heavy blur+dim, which hid the preview
+              entirely — the thumbnail stays recognizable as a teaser, just
+              dimmed, with the lock + price as the clear focal point. */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/45 px-8 text-center text-white backdrop-blur-[2px]">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-white/10 backdrop-blur-xl">
               <Lock size={24} strokeWidth={2} />
             </div>
             <p className="text-sm font-semibold">Эксклюзивный Short</p>
@@ -244,7 +242,7 @@ export default function VideoCard({
               type="button"
               onClick={handleUnlock}
               disabled={unlocking}
-              className="rounded-full bg-blue-500 px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
+              className="rounded-full bg-blue-500 px-5 py-2.5 text-sm font-semibold shadow-lg disabled:opacity-60"
             >
               {unlocking ? "Открываем…" : `Открыть за ${item.priceStars} ⭐`}
             </button>
