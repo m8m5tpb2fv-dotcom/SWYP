@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { X, ChevronDown, UserRound, Pencil } from "lucide-react";
+import { X, ChevronDown, UserRound, Pencil, Lock } from "lucide-react";
 import { fetchUserProfile, fetchUserVideos, followUser, unfollowUser, type UserProfile } from "../lib/users";
 import { fetchVideoById, type FeedItem } from "../lib/feed";
-import { subscribeToCreator } from "../lib/monetization";
+import { subscribeToCreator, unlockVideo } from "../lib/monetization";
 import WebApp from "@twa-dev/sdk";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
 import VideoCard from "./VideoCard";
@@ -34,6 +34,8 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
   const [giftOpen, setGiftOpen] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
+  const [unlockGridError, setUnlockGridError] = useState<string | null>(null);
   // Bumped by the retry button below — the load effect otherwise only
   // re-runs on a userId change, so a failed load previously had no way to
   // try again short of closing and reopening the whole profile screen.
@@ -108,6 +110,29 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
     } catch (err) {
       setSubscribing(false);
       setSubscribeError((err as Error).message);
+    }
+  };
+
+  // Buying a locked video straight from the grid — no need to open the
+  // viewer first just to reach the same unlock button that lives there too.
+  const handleUnlockFromGrid = async (video: FeedItem, index: number) => {
+    if (unlockingId) return;
+    setUnlockingId(video.id);
+    setUnlockGridError(null);
+    try {
+      const { invoiceUrl } = await unlockVideo(video.id);
+      WebApp.openInvoice(invoiceUrl, (status) => {
+        setUnlockingId(null);
+        if (status === "paid") {
+          handleUnlocked(video);
+          setOpenIndex(index);
+        } else if (status === "failed") {
+          setUnlockGridError("Платёж не прошёл");
+        }
+      });
+    } catch (err) {
+      setUnlockingId(null);
+      setUnlockGridError((err as Error).message);
     }
   };
 
@@ -224,20 +249,33 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
 
         {videos.length > 0 && (
           <div className="grid grid-cols-3 gap-0.5 px-0.5 pb-6">
-            {videos.map((v, index) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setOpenIndex(index)}
-                className="aspect-[9/16] bg-white/5"
-              >
-                {v.thumbnailUrl && (
-                  <img src={v.thumbnailUrl} alt={v.title ?? ""} className="h-full w-full object-cover" />
-                )}
-              </button>
-            ))}
+            {videos.map((v, index) => {
+              const locked = v.isPremium && !v.isUnlocked;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => (locked ? handleUnlockFromGrid(v, index) : setOpenIndex(index))}
+                  disabled={unlockingId === v.id}
+                  className="relative aspect-[9/16] bg-white/5"
+                >
+                  {v.thumbnailUrl && (
+                    <img src={v.thumbnailUrl} alt={v.title ?? ""} className="h-full w-full object-cover" />
+                  )}
+                  {locked && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/45 text-white backdrop-blur-[2px]">
+                      <Lock size={16} strokeWidth={2} />
+                      <span className="text-[11px] font-semibold leading-none">
+                        {unlockingId === v.id ? "…" : `${v.priceStars} ⭐`}
+                      </span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
+        {unlockGridError && <p className="pb-4 text-center text-xs text-red-400">{unlockGridError}</p>}
 
         {profile && videos.length === 0 && !loading && (
           <p className="py-6 text-center text-sm text-white/40">Пока нет опубликованных Shorts</p>
