@@ -60,6 +60,23 @@ export function publishVideo(videoId: string, payload: PublishPayload) {
   });
 }
 
+export interface UpdateVideoResult {
+  id: string;
+  title: string | null;
+  description: string | null;
+  category: string | null;
+  hashtags: string[];
+}
+
+// Editing an already-published video's info — separate from publishVideo,
+// which also kicks off transcoding and only works on a draft.
+export function updateVideo(videoId: string, payload: PublishPayload) {
+  return apiFetch<UpdateVideoResult>(`/api/videos/${videoId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export interface VideoStatus {
   id: string;
   status: string;

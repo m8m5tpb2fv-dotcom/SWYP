@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { requestUploadUrl, uploadFileToStorage, publishVideo, getVideoStatus } from "../lib/upload";
+import { CATEGORIES } from "../lib/categories";
 
 interface Props {
   onClose: () => void;
@@ -14,14 +15,6 @@ type Stage =
   | { kind: "processing"; videoId: string }
   | { kind: "done" }
   | { kind: "error"; message: string };
-
-const CATEGORIES = [
-  { value: "humor", label: "🔥 Юмор" },
-  { value: "auto", label: "🚗 Авто" },
-  { value: "travel", label: "✈️ Путешествия" },
-  { value: "games", label: "🎮 Игры" },
-  { value: "facts", label: "🧠 Факты" },
-];
 
 export default function UploadScreen({ onClose, onPublished }: Props) {
   const [stage, setStage] = useState<Stage>({ kind: "pick" });

@@ -70,6 +70,48 @@ export async function uploadRoutes(app: FastifyInstance) {
     return { id, status: "processing" };
   });
 
+  // Editing a video's title/description/hashtags/category after it's already
+  // published — a separate action from /publish (which also kicks off
+  // transcoding). Restricted to published videos: draft/processing has no
+  // meaningful "edit" yet, and blocked/rejected/deleted shouldn't be touched
+  // via this route.
+  app.patch("/api/videos/:id", { preHandler: authenticate }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const userId = request.user.sub;
+    const { title, description, category, hashtags } = (request.body ?? {}) as {
+      title?: string;
+      description?: string;
+      category?: string;
+      hashtags?: string[];
+    };
+
+    const video = await prisma.video.findUnique({ where: { id } });
+    if (!video || video.userId !== userId) {
+      return reply.code(404).send({ error: "Video not found" });
+    }
+    if (video.status !== "published") {
+      return reply.code(400).send({ error: `Cannot edit a video with status ${video.status}` });
+    }
+
+    const updated = await prisma.video.update({
+      where: { id },
+      data: {
+        title: title?.trim() || null,
+        description: description?.trim() || null,
+        category: category ?? video.category,
+        hashtags: Array.isArray(hashtags) ? hashtags.filter((h) => h.trim().length > 0) : video.hashtags,
+      },
+    });
+
+    return {
+      id: updated.id,
+      title: updated.title,
+      description: updated.description,
+      category: updated.category,
+      hashtags: updated.hashtags,
+    };
+  });
+
   app.get("/api/videos/:id/status", { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const video = await prisma.video.findUnique({

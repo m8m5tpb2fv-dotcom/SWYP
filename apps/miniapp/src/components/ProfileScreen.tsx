@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, ChevronDown, UserRound } from "lucide-react";
+import { X, ChevronDown, UserRound, Pencil } from "lucide-react";
 import { fetchUserProfile, fetchUserVideos, followUser, unfollowUser, type UserProfile } from "../lib/users";
 import type { FeedItem } from "../lib/feed";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
@@ -8,6 +8,7 @@ import VideoActionBar from "./VideoActionBar";
 import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
 import EditProfileSheet from "./EditProfileSheet";
+import EditVideoSheet from "./EditVideoSheet";
 
 interface Props {
   userId: string;
@@ -26,6 +27,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
   const [commentsForId, setCommentsForId] = useState<string | null>(null);
   const [reportForId, setReportForId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [editVideoOpen, setEditVideoOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,7 +166,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
         )}
       </div>
 
-      {openIndex !== null && videos[openIndex] && !commentsForId && !reportForId && (
+      {openIndex !== null && videos[openIndex] && !commentsForId && !reportForId && !editVideoOpen && (
         <div className="absolute inset-0 z-40 bg-black">
           <button
             type="button"
@@ -174,6 +176,16 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
           >
             <X size={18} strokeWidth={2} />
           </button>
+          {profile?.isMe && (
+            <button
+              type="button"
+              onClick={() => setEditVideoOpen(true)}
+              className="absolute right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur"
+              style={{ top: "calc(var(--tg-safe-top, 0px) + 3.75rem)" }}
+            >
+              <Pencil size={16} strokeWidth={2} />
+            </button>
+          )}
           {openIndex < videos.length - 1 && (
             <button
               type="button"
@@ -222,6 +234,17 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
           initialBio={profile.bio}
           onClose={() => setEditOpen(false)}
           onSaved={(bio) => setProfile((prev) => (prev ? { ...prev, bio } : prev))}
+        />
+      )}
+
+      {editVideoOpen && openIndex !== null && videos[openIndex] && (
+        <EditVideoSheet
+          video={videos[openIndex]}
+          onClose={() => setEditVideoOpen(false)}
+          onSaved={(patch) => {
+            const videoId = videos[openIndex].id;
+            setVideos((prev) => prev.map((v) => (v.id === videoId ? { ...v, ...patch } : v)));
+          }}
         />
       )}
     </div>
