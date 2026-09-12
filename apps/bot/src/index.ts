@@ -14,12 +14,12 @@ const adminUrl = process.env.ADMIN_URL;
 
 const bot = new Bot(token);
 
-bot.command("start", async (ctx) => {
-  const keyboard = new InlineKeyboard().webApp("▶️ Смотреть Shorts", miniAppUrl);
-  await ctx.reply("🔥 SHORTS\n\nСмотри короткие видео прямо внутри Telegram.", {
-    reply_markup: keyboard,
-  });
-});
+// Replaces Telegram's default "START" button (which just sends the /start
+// text) with a menu button that opens the Mini App directly — a brand-new
+// user reaches the app in one tap, with no slash command involved at all.
+bot.api.setChatMenuButton({
+  menu_button: { type: "web_app", text: "Открыть SWYP", web_app: { url: miniAppUrl } },
+}).catch((err) => console.error("[bot] setChatMenuButton failed", err));
 
 bot.command("app", async (ctx) => {
   const keyboard = new InlineKeyboard().webApp("▶️ Открыть", miniAppUrl);
@@ -40,7 +40,7 @@ bot.command("admin", async (ctx) => {
 
 bot.command("help", async (ctx) => {
   await ctx.reply(
-    "/start — открыть Shorts\n/app — открыть Mini App\n/profile — мой профиль\n/admin — админ-панель",
+    "/app — открыть Mini App\n/profile — мой профиль\n/admin — админ-панель",
   );
 });
 
