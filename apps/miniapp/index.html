@@ -7,8 +7,21 @@
       input whose font-size is under 16px makes iOS auto-zoom the whole page
       in (the classic "everything gets bigger while typing" bug) — this pins
       the layout so it never scales, regardless of what's focused.
+
+      interactive-widget=overlays-content: without this, the on-screen
+      keyboard opening (e.g. tapping the comment box) shrinks the layout
+      viewport — html/body/#root are height:100% (index.css) — which
+      shrinks Feed's full-height snap-scroll container too. Since each video
+      is itself h-full, that resize throws off scrollTop's alignment with
+      the new (shorter) item height, and CSS scroll-snap "corrects" by
+      settling on the nearest snap point — sometimes the next video. This
+      keeps the layout viewport fixed and lets the keyboard overlay it
+      instead, so nothing about Feed's size changes when it opens.
     -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content"
+    />
     <title>Shorts</title>
     <!--
       Video/thumbnail bytes are served directly from this Railway bucket
