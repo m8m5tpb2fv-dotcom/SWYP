@@ -52,13 +52,33 @@ export default function VideoCard({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    let retry: (() => void) | null = null;
+
     if (active) {
       video.play().catch(() => {
-        // autoplay can be blocked until the first user gesture — tapping the video recovers it
+        // Some WebViews (Telegram's included) still silently block the very
+        // first autoplay attempt before the page has seen any interaction
+        // at all, even for a muted video — this is why only the FIRST
+        // video on cold app open ever showed paused, never ones reached by
+        // swiping (a swipe is itself the interaction that unblocks it).
+        // Retry once on the first touch/click anywhere, then stop listening.
+        retry = () => {
+          video.play().catch(() => {});
+        };
+        document.addEventListener("touchstart", retry, { once: true, passive: true });
+        document.addEventListener("click", retry, { once: true });
       });
     } else {
       video.pause();
     }
+
+    return () => {
+      if (retry) {
+        document.removeEventListener("touchstart", retry);
+        document.removeEventListener("click", retry);
+      }
+    };
   }, [active]);
 
   useEffect(() => {
