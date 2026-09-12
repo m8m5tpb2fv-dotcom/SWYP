@@ -5,6 +5,7 @@ import VideoActionBar from "./VideoActionBar";
 import TopNav from "./TopNav";
 import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
+import GiftPickerSheet from "./GiftPickerSheet";
 import { fetchFeed, type FeedItem } from "../lib/feed";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
 import { sendImpression, sendWatch } from "../lib/events";
@@ -52,6 +53,7 @@ export default function Feed({
   const [muted, setMuted] = useState(true);
   const [commentsForId, setCommentsForId] = useState<string | null>(null);
   const [reportForId, setReportForId] = useState<string | null>(null);
+  const [giftFor, setGiftFor] = useState<FeedItem | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef(new Map<string, HTMLDivElement>());
@@ -255,9 +257,10 @@ export default function Feed({
 
       <TopNav onSearch={onOpenSearch} onUpload={onOpenUpload} />
 
-      {activeItem && !commentsForId && !reportForId && (
+      {activeItem && !commentsForId && !reportForId && !giftFor && (
         <VideoActionBar
           item={activeItem}
+          currentUserId={currentUserId}
           muted={muted}
           onToggleMute={() => setMuted((m) => !m)}
           onToggleLike={handleToggleLike}
@@ -265,6 +268,7 @@ export default function Feed({
           onShare={handleShare}
           onReport={(v) => setReportForId(v.id)}
           onOpenOwnProfile={onOpenOwnProfile}
+          onOpenGift={setGiftFor}
         />
       )}
 
@@ -278,6 +282,15 @@ export default function Feed({
       )}
 
       {reportForId && <ReportSheet videoId={reportForId} onClose={() => setReportForId(null)} />}
+
+      {giftFor && (
+        <GiftPickerSheet
+          recipientUserId={giftFor.author.id}
+          recipientLabel={giftFor.author.username ? `@${giftFor.author.username}` : giftFor.author.firstName ?? "автора"}
+          videoId={giftFor.id}
+          onClose={() => setGiftFor(null)}
+        />
+      )}
     </div>
   );
 }

@@ -36,8 +36,46 @@ model User {
   reports        Report[]
   categoryScores UserCategoryScore[]
   views          VideoView[]
+  giftsSent      GiftTransaction[]   @relation("GiftsSent")
+  giftsReceived  GiftTransaction[]   @relation("GiftsReceived")
 
   @@map("users")
+}
+
+// Long-press the like button on a video -> buy the author a real Telegram
+// Gift with Stars. Paying and delivering are two separate Bot API calls
+// (a Stars invoice, then sendGift spent from the bot's own star balance),
+// so this row tracks the gap between them: pending_payment until Telegram
+// confirms the invoice was paid (apps/bot's successful_payment handler),
+// then either delivered (sendGift succeeded) or failed_refunded (sendGift
+// failed — e.g. the bot's own star balance was too low — and the
+// purchaser's stars were refunded via refundStarPayment rather than kept
+// for a gift that never arrived).
+model GiftTransaction {
+  id               String                @id @default(uuid())
+  purchaserId      String
+  recipientId      String
+  videoId          String?
+  telegramGiftId   String
+  starCount        Int
+  status           GiftTransactionStatus @default(pending_payment)
+  telegramChargeId String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  purchaser User   @relation("GiftsSent", fields: [purchaserId], references: [id], onDelete: Cascade)
+  recipient User   @relation("GiftsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  video     Video? @relation(fields: [videoId], references: [id], onDelete: SetNull)
+
+  @@index([purchaserId])
+  @@index([recipientId])
+  @@map("gift_transactions")
+}
+
+enum GiftTransactionStatus {
+  pending_payment
+  delivered
+  failed_refunded
 }
 
 // One row per (user, video) — caps viewsCount at one per unique viewer for
@@ -139,6 +177,7 @@ model Video {
   comments Comment[]
   reports  Report[]
   views    VideoView[]
+  gifts    GiftTransaction[]
 
   @@index([userId])
   @@index([status])

@@ -1,0 +1,93 @@
+import { useEffect, useState } from "react";
+import WebApp from "@twa-dev/sdk";
+import { fetchGifts, purchaseGift, giftStickerSrc, type Gift } from "../lib/gifts";
+
+interface Props {
+  recipientUserId: string;
+  recipientLabel: string;
+  videoId?: string;
+  onClose: () => void;
+}
+
+type Phase = "loading" | "picking" | "paying" | "sent" | "error";
+
+export default function GiftPickerSheet({ recipientUserId, recipientLabel, videoId, onClose }: Props) {
+  const [gifts, setGifts] = useState<Gift[]>([]);
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchGifts()
+      .then((items) => {
+        setGifts(items);
+        setPhase("picking");
+      })
+      .catch((err) => {
+        setError((err as Error).message);
+        setPhase("error");
+      });
+  }, []);
+
+  const handlePick = async (gift: Gift) => {
+    setPhase("paying");
+    setError(null);
+    try {
+      const { invoiceUrl } = await purchaseGift(gift.id, recipientUserId, videoId);
+      WebApp.openInvoice(invoiceUrl, (status) => {
+        if (status === "paid") {
+          setPhase("sent");
+        } else if (status === "failed") {
+          setError("Платёж не прошёл");
+          setPhase("error");
+        } else {
+          // "cancelled" / "pending" — user backed out or it's still settling, no error to show
+          setPhase("picking");
+        }
+      });
+    } catch (err) {
+      setError((err as Error).message);
+      setPhase("error");
+    }
+  };
+
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative flex max-h-[70%] flex-col overflow-y-auto rounded-t-2xl bg-[#161616] text-white">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <span className="text-sm font-semibold">Подарок для {recipientLabel}</span>
+          <button type="button" onClick={onClose} className="text-sm text-white/50">
+            Закрыть
+          </button>
+        </div>
+
+        <div className="px-4 py-4">
+          {phase === "loading" && <p className="py-6 text-center text-sm text-white/50">Загрузка…</p>}
+          {phase === "error" && (
+            <p className="py-6 text-center text-sm text-red-400">{error ?? "Что-то пошло не так"}</p>
+          )}
+          {phase === "sent" && <p className="py-6 text-center text-sm text-white">🎁 Подарок отправлен!</p>}
+          {phase === "paying" && <p className="py-6 text-center text-sm text-white/50">Открываем оплату…</p>}
+
+          {phase === "picking" && (
+            <div className="grid grid-cols-3 gap-3">
+              {gifts.map((gift) => (
+                <button
+                  key={gift.id}
+                  type="button"
+                  onClick={() => handlePick(gift)}
+                  className="flex flex-col items-center gap-1 rounded-xl bg-white/5 p-3"
+                >
+                  <img src={giftStickerSrc(gift)} alt="" className="h-14 w-14" />
+                  <span className="flex items-center gap-1 text-xs font-semibold text-white/80">
+                    ⭐ {gift.starCount}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

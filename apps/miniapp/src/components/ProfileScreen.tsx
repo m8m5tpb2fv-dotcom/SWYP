@@ -9,6 +9,7 @@ import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
 import EditProfileSheet from "./EditProfileSheet";
 import EditVideoSheet from "./EditVideoSheet";
+import GiftPickerSheet from "./GiftPickerSheet";
 
 interface Props {
   userId: string;
@@ -28,6 +29,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
   const [reportForId, setReportForId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editVideoOpen, setEditVideoOpen] = useState(false);
+  const [giftOpen, setGiftOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,7 +168,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
         )}
       </div>
 
-      {openIndex !== null && videos[openIndex] && !commentsForId && !reportForId && !editVideoOpen && (
+      {openIndex !== null && videos[openIndex] && !commentsForId && !reportForId && !editVideoOpen && !giftOpen && (
         <div className="absolute inset-0 z-40 bg-black">
           <button
             type="button"
@@ -208,12 +210,14 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
           />
           <VideoActionBar
             item={videos[openIndex]}
+            currentUserId={currentUserId}
             muted={muted}
             onToggleMute={() => setMuted((m) => !m)}
             onToggleLike={handleToggleLike}
             onOpenComments={(v) => setCommentsForId(v.id)}
             onShare={handleShare}
             onReport={(v) => setReportForId(v.id)}
+            onOpenGift={() => setGiftOpen(true)}
           />
         </div>
       )}
@@ -245,6 +249,17 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             const videoId = videos[openIndex].id;
             setVideos((prev) => prev.map((v) => (v.id === videoId ? { ...v, ...patch } : v)));
           }}
+        />
+      )}
+
+      {giftOpen && openIndex !== null && videos[openIndex] && (
+        <GiftPickerSheet
+          recipientUserId={videos[openIndex].author.id}
+          recipientLabel={
+            videos[openIndex].author.username ? `@${videos[openIndex].author.username}` : videos[openIndex].author.firstName ?? "автора"
+          }
+          videoId={videos[openIndex].id}
+          onClose={() => setGiftOpen(false)}
         />
       )}
     </div>

@@ -1,9 +1,13 @@
+import { useRef } from "react";
 import WebApp from "@twa-dev/sdk";
 import { MessageCircle, Heart, Link2, Volume2, VolumeX, Flag, UserRound, Download } from "lucide-react";
 import type { FeedItem } from "../lib/feed";
 
+const GIFT_LONG_PRESS_MS = 500;
+
 interface Props {
   item: FeedItem;
+  currentUserId: string;
   muted: boolean;
   onToggleMute: () => void;
   onToggleLike: (item: FeedItem) => void;
@@ -11,6 +15,10 @@ interface Props {
   onShare: (item: FeedItem) => void;
   onReport: (item: FeedItem) => void;
   onOpenOwnProfile?: () => void;
+  // Long-press the like button -> buy the author a real Telegram Gift.
+  // Omitted (or the video is the viewer's own) disables the long-press —
+  // gifting yourself makes no sense.
+  onOpenGift?: (item: FeedItem) => void;
 }
 
 // Order: comments, share, download, like (elevated focal action), own
@@ -19,6 +27,7 @@ interface Props {
 // screen itself so they stay reachable even when there's no active video.
 export default function VideoActionBar({
   item,
+  currentUserId,
   muted,
   onToggleMute,
   onToggleLike,
@@ -26,6 +35,7 @@ export default function VideoActionBar({
   onShare,
   onReport,
   onOpenOwnProfile,
+  onOpenGift,
 }: Props) {
   const handleDownload = () => {
     if (!item.videoUrl) return;
@@ -33,6 +43,36 @@ export default function VideoActionBar({
     // save-to-device prompt/progress itself. Older clients ignore the call
     // silently, so there's nothing to fall back to from inside the WebView.
     WebApp.downloadFile({ url: item.videoUrl, file_name: `SWYP-${item.id}.mp4` });
+  };
+
+  const canGift = Boolean(onOpenGift) && item.author.id !== currentUserId;
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressFiredRef = useRef(false);
+
+  const handleLikePressStart = () => {
+    if (!canGift) return;
+    longPressFiredRef.current = false;
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressFiredRef.current = true;
+      onOpenGift?.(item);
+    }, GIFT_LONG_PRESS_MS);
+  };
+
+  const cancelLikePress = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleLikeClick = () => {
+    // The long-press already opened the gift sheet — the click that follows
+    // releasing the hold shouldn't also toggle the like.
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return;
+    }
+    onToggleLike(item);
   };
 
   return (
@@ -86,7 +126,14 @@ export default function VideoActionBar({
             centers the taller button symmetrically (bulging evenly above
             and below the pill) — an extra negative margin here previously
             pushed it up unevenly instead. */}
-        <button type="button" onClick={() => onToggleLike(item)} className="flex w-16 shrink-0 items-center justify-center">
+        <button
+          type="button"
+          onClick={handleLikeClick}
+          onTouchStart={handleLikePressStart}
+          onTouchEnd={cancelLikePress}
+          onTouchCancel={cancelLikePress}
+          className="flex w-16 shrink-0 items-center justify-center"
+        >
           <div className="flex h-16 w-16 flex-col items-center justify-center rounded-full border-[3px] border-black/50 bg-blue-500 shadow-lg">
             <Heart size={24} strokeWidth={2} fill={item.isLiked ? "white" : "none"} className="text-white" />
             <span className="text-[11px] font-semibold leading-none text-white">{item.likesCount}</span>
