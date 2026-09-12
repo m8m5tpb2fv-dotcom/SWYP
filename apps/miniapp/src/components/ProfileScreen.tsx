@@ -7,6 +7,7 @@ import VideoCard from "./VideoCard";
 import VideoActionBar from "./VideoActionBar";
 import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
+import EditProfileSheet from "./EditProfileSheet";
 
 interface Props {
   userId: string;
@@ -24,6 +25,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
   const [muted, setMuted] = useState(true);
   const [commentsForId, setCommentsForId] = useState<string | null>(null);
   const [reportForId, setReportForId] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +112,15 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             </div>
           </div>
 
-          {!profile.isMe && (
+          {profile.isMe ? (
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="w-full max-w-xs rounded-lg bg-white/10 py-2 text-sm font-semibold text-white"
+            >
+              Редактировать профиль
+            </button>
+          ) : (
             <button
               type="button"
               onClick={handleToggleFollow}
@@ -198,6 +208,14 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
       )}
 
       {reportForId && <ReportSheet videoId={reportForId} onClose={() => setReportForId(null)} />}
+
+      {editOpen && profile?.isMe && (
+        <EditProfileSheet
+          initialBio={profile.bio}
+          onClose={() => setEditOpen(false)}
+          onSaved={(bio) => setProfile((prev) => (prev ? { ...prev, bio } : prev))}
+        />
+      )}
     </div>
   );
 }

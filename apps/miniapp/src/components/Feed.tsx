@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { TouchEvent as ReactTouchEvent } from "react";
 import VideoCard from "./VideoCard";
 import VideoActionBar from "./VideoActionBar";
+import TopNav from "./TopNav";
 import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
 import { fetchFeed, type FeedItem } from "../lib/feed";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
 import { sendImpression, sendWatch } from "../lib/events";
+
+// Swipe-right-to-own-profile thresholds: predominantly horizontal (vertical
+// drift under half the horizontal distance, so it doesn't fire during the
+// normal vertical snap-scroll), far enough to be deliberate, fast enough
+// that a slow drag/scroll doesn't accidentally qualify.
+const SWIPE_MIN_DISTANCE_PX = 60;
+const SWIPE_MAX_DURATION_MS = 600;
 
 interface Props {
   currentUserId: string;
@@ -163,56 +172,80 @@ export default function Feed({
     setItems((prev) => prev.map((v) => (v.id === videoId ? { ...v, commentsCount: v.commentsCount + delta } : v)));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-sm text-white/60">
-        Загрузка ленты…
-      </div>
-    );
-  }
+  // Own-profile access needs to work even with an empty/loading feed (no
+  // VideoActionBar to hold its icon then) — a plain right swipe anywhere on
+  // this screen opens it, on top of the icon already in the action bar.
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
-  if (error && items.length === 0) {
-    return (
-      <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-red-400">
-        {error}
-      </div>
-    );
-  }
+  const handleTouchStart = useCallback((e: ReactTouchEvent) => {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+  }, []);
 
-  if (items.length === 0) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-sm text-white/60">
-        Пока нет видео
-      </div>
-    );
-  }
+  const handleTouchEnd = useCallback(
+    (e: ReactTouchEvent) => {
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      if (!start) return;
+      const t = e.changedTouches[0];
+      const deltaX = t.clientX - start.x;
+      const deltaY = t.clientY - start.y;
+      const elapsed = Date.now() - start.time;
+      if (
+        deltaX > SWIPE_MIN_DISTANCE_PX &&
+        Math.abs(deltaY) < deltaX * 0.5 &&
+        elapsed < SWIPE_MAX_DURATION_MS
+      ) {
+        onOpenOwnProfile();
+      }
+    },
+    [onOpenOwnProfile],
+  );
 
   const activeIndex = items.findIndex((i) => i.id === activeId);
   const activeItem = activeIndex !== -1 ? items[activeIndex] : null;
 
   return (
-    <div className="relative h-full w-full">
-      <div
-        ref={containerRef}
-        className="h-full w-full snap-y snap-mandatory overflow-y-scroll"
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        {items.map((item, index) => {
-          const distance = Math.abs(index - (activeIndex === -1 ? 0 : activeIndex));
-          return (
-            <VideoCard
-              key={item.id}
-              item={item}
-              active={item.id === activeId}
-              preload={distance <= 1 ? "auto" : "metadata"}
-              muted={muted}
-              onOpenAuthor={handleOpenAuthor}
-              onDoubleTapLike={handleToggleLike}
-              registerNode={(node) => setNodeRef(item.id, node)}
-            />
-          );
-        })}
-      </div>
+    <div className="relative h-full w-full" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      {loading && (
+        <div className="flex h-full w-full items-center justify-center text-sm text-white/60">Загрузка ленты…</div>
+      )}
+
+      {!loading && error && items.length === 0 && (
+        <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-red-400">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && items.length === 0 && (
+        <div className="flex h-full w-full items-center justify-center text-sm text-white/60">Пока нет видео</div>
+      )}
+
+      {!loading && items.length > 0 && (
+        <div
+          ref={containerRef}
+          className="h-full w-full snap-y snap-mandatory overflow-y-scroll"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          {items.map((item, index) => {
+            const distance = Math.abs(index - (activeIndex === -1 ? 0 : activeIndex));
+            return (
+              <VideoCard
+                key={item.id}
+                item={item}
+                active={item.id === activeId}
+                preload={distance <= 1 ? "auto" : "metadata"}
+                muted={muted}
+                onOpenAuthor={handleOpenAuthor}
+                onDoubleTapLike={handleToggleLike}
+                registerNode={(node) => setNodeRef(item.id, node)}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      <TopNav onSearch={onOpenSearch} onUpload={onOpenUpload} />
 
       {activeItem && !commentsForId && !reportForId && (
         <VideoActionBar
@@ -224,7 +257,6 @@ export default function Feed({
           onShare={handleShare}
           onReport={(v) => setReportForId(v.id)}
           onOpenOwnProfile={onOpenOwnProfile}
-          nav={{ onSearch: onOpenSearch, onUpload: onOpenUpload }}
         />
       )}
 

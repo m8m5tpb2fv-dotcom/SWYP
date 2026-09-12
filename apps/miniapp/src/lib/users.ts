@@ -41,3 +41,13 @@ export function unfollowUser(userId: string) {
     method: "DELETE",
   });
 }
+
+// Only bio is editable — username/name/avatar are synced from Telegram's own
+// profile on every login, so editing those in-app would just be overwritten
+// the next time the user opens the Mini App.
+export function updateMyBio(bio: string) {
+  return apiFetch<{ bio: string | null }>("/api/me", {
+    method: "PATCH",
+    body: JSON.stringify({ bio }),
+  });
+}
