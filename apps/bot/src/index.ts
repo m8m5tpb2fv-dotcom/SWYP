@@ -45,22 +45,53 @@ bot.command("help", async (ctx) => {
 });
 
 const GIFT_PAYLOAD_PREFIX = "giftTx:";
+const VIDEO_UNLOCK_PAYLOAD_PREFIX = "videoUnlock:";
+const SUBSCRIBE_PAYLOAD_PREFIX = "subscribe:";
+// Kept in sync with services/api/src/routes/monetization.ts's SUBSCRIPTION_DAYS —
+// separate deployable services, no shared import between them.
+const SUBSCRIPTION_DAYS = 30;
 
-// Stars payment flow for the long-press-like-to-gift feature (services/api's
-// /api/gifts/purchase creates the invoice this pays). Telegram requires
-// pre_checkout_query answered within 10s or the payment is auto-declined.
+// Stars payment flow for the long-press-like-to-gift feature, per-video
+// unlocks and creator subscriptions (services/api's /api/gifts/purchase,
+// /api/videos/:id/unlock and /api/users/:id/subscribe create the invoices
+// this pays). Telegram requires pre_checkout_query answered within 10s or
+// the payment is auto-declined.
 bot.on("pre_checkout_query", async (ctx) => {
   const payload = ctx.preCheckoutQuery.invoice_payload;
-  if (!payload.startsWith(GIFT_PAYLOAD_PREFIX)) {
-    await ctx.answerPreCheckoutQuery(false, { error_message: "Неизвестный платёж" });
+
+  if (payload.startsWith(GIFT_PAYLOAD_PREFIX)) {
+    const tx = await prisma.giftTransaction.findUnique({ where: { id: payload.slice(GIFT_PAYLOAD_PREFIX.length) } });
+    if (!tx || tx.status !== "pending_payment") {
+      await ctx.answerPreCheckoutQuery(false, { error_message: "Заказ не найден или уже обработан" });
+      return;
+    }
+    await ctx.answerPreCheckoutQuery(true);
     return;
   }
-  const tx = await prisma.giftTransaction.findUnique({ where: { id: payload.slice(GIFT_PAYLOAD_PREFIX.length) } });
-  if (!tx || tx.status !== "pending_payment") {
-    await ctx.answerPreCheckoutQuery(false, { error_message: "Заказ не найден или уже обработан" });
+
+  if (payload.startsWith(VIDEO_UNLOCK_PAYLOAD_PREFIX)) {
+    const videoId = payload.slice(VIDEO_UNLOCK_PAYLOAD_PREFIX.length);
+    const video = await prisma.video.findUnique({ where: { id: videoId } });
+    if (!video || !video.isPremium || !video.priceStars) {
+      await ctx.answerPreCheckoutQuery(false, { error_message: "Видео больше недоступно для покупки" });
+      return;
+    }
+    await ctx.answerPreCheckoutQuery(true);
     return;
   }
-  await ctx.answerPreCheckoutQuery(true);
+
+  if (payload.startsWith(SUBSCRIBE_PAYLOAD_PREFIX)) {
+    const creatorId = payload.slice(SUBSCRIBE_PAYLOAD_PREFIX.length);
+    const creator = await prisma.user.findUnique({ where: { id: creatorId } });
+    if (!creator || !creator.subscriptionPriceStars) {
+      await ctx.answerPreCheckoutQuery(false, { error_message: "Подписка больше недоступна" });
+      return;
+    }
+    await ctx.answerPreCheckoutQuery(true);
+    return;
+  }
+
+  await ctx.answerPreCheckoutQuery(false, { error_message: "Неизвестный платёж" });
 });
 
 // Payment confirmed — deliver the actual gift. sendGift spends from the
@@ -71,6 +102,65 @@ bot.on("pre_checkout_query", async (ctx) => {
 bot.on("message:successful_payment", async (ctx) => {
   const payment = ctx.message.successful_payment;
   const payload = payment.invoice_payload;
+
+  // Unlock/subscribe never went through a pending DB row the way gifts do
+  // (no external delivery call after payment that could itself fail), so the
+  // buyer is resolved here from ctx.from — the same Telegram account that
+  // authenticated through the Mini App to request the invoice.
+  if (payload.startsWith(VIDEO_UNLOCK_PAYLOAD_PREFIX)) {
+    const videoId = payload.slice(VIDEO_UNLOCK_PAYLOAD_PREFIX.length);
+    const buyer = await prisma.user.findUnique({ where: { telegramId: String(ctx.from.id) } });
+    if (!buyer) return;
+    await prisma.videoUnlock.upsert({
+      where: { userId_videoId: { userId: buyer.id, videoId } },
+      create: {
+        userId: buyer.id,
+        videoId,
+        priceStars: payment.total_amount,
+        telegramChargeId: payment.telegram_payment_charge_id,
+      },
+      update: {},
+    });
+    await ctx.reply("✅ Видео открыто! Вернись в приложение, чтобы посмотреть его.");
+    return;
+  }
+
+  if (payload.startsWith(SUBSCRIBE_PAYLOAD_PREFIX)) {
+    const creatorId = payload.slice(SUBSCRIBE_PAYLOAD_PREFIX.length);
+    const buyer = await prisma.user.findUnique({ where: { telegramId: String(ctx.from.id) } });
+    if (!buyer) return;
+
+    // Idempotency guard — Telegram doesn't normally redeliver successful_payment,
+    // but unlike VideoUnlock (a unique userId+videoId row an upsert can no-op
+    // on) a subscription extends an expiry date, so a duplicate delivery would
+    // double-grant days without this check.
+    const already = await prisma.creatorSubscription.findFirst({
+      where: { telegramChargeId: payment.telegram_payment_charge_id },
+    });
+    if (already) return;
+
+    // Renewing before expiry stacks the new period onto the remaining time
+    // instead of wasting it.
+    const latestActive = await prisma.creatorSubscription.findFirst({
+      where: { subscriberId: buyer.id, creatorId, expiresAt: { gt: new Date() } },
+      orderBy: { expiresAt: "desc" },
+    });
+    const base = latestActive ? latestActive.expiresAt : new Date();
+    const expiresAt = new Date(base.getTime() + SUBSCRIPTION_DAYS * 24 * 60 * 60 * 1000);
+
+    await prisma.creatorSubscription.create({
+      data: {
+        subscriberId: buyer.id,
+        creatorId,
+        priceStars: payment.total_amount,
+        expiresAt,
+        telegramChargeId: payment.telegram_payment_charge_id,
+      },
+    });
+    await ctx.reply(`✅ Подписка активна на ${SUBSCRIPTION_DAYS} дней! Открой приложение, чтобы смотреть эксклюзивные Shorts.`);
+    return;
+  }
+
   if (!payload.startsWith(GIFT_PAYLOAD_PREFIX)) return;
 
   const tx = await prisma.giftTransaction.findUnique({

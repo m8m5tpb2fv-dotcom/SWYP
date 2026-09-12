@@ -15,6 +15,7 @@ import { adminRoutes } from "./routes/admin.js";
 import { eventRoutes } from "./routes/events.js";
 import { shareRoutes } from "./routes/shares.js";
 import { giftRoutes } from "./routes/gifts.js";
+import { monetizationRoutes } from "./routes/monetization.js";
 
 const app = Fastify({ logger: true });
 
@@ -39,6 +40,7 @@ await app.register(adminRoutes);
 await app.register(eventRoutes);
 await app.register(shareRoutes);
 await app.register(giftRoutes);
+await app.register(monetizationRoutes);
 
 // PORT is Railway's convention; API_PORT is the local-dev override.
 const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3000);

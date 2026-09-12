@@ -7,6 +7,19 @@ import { videoProcessingQueue } from "../queues.js";
 
 const ALLOWED_CONTENT_TYPES = new Set(["video/mp4", "video/quicktime"]);
 
+// Shared by /publish and the PATCH edit route. Returns an error string on
+// invalid input, or the normalized { isPremium, priceStars } to write.
+function parsePremiumFields(body: { isPremium?: boolean; priceStars?: number }) {
+  const isPremium = Boolean(body.isPremium);
+  if (!isPremium) return { ok: true as const, isPremium: false, priceStars: null };
+
+  const priceStars = body.priceStars;
+  if (typeof priceStars !== "number" || !Number.isInteger(priceStars) || priceStars < 1 || priceStars > 100000) {
+    return { ok: false as const, error: "priceStars must be an integer between 1 and 100000 for a premium video" };
+  }
+  return { ok: true as const, isPremium: true, priceStars };
+}
+
 export async function uploadRoutes(app: FastifyInstance) {
   // ШАГ 11 upload architecture: client gets a presigned PUT URL and pushes bytes
   // straight to storage — the API never touches the file itself.
@@ -31,11 +44,13 @@ export async function uploadRoutes(app: FastifyInstance) {
   app.post("/api/videos/:id/publish", { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const userId = request.user.sub;
-    const { title, description, category, hashtags } = (request.body ?? {}) as {
+    const { title, description, category, hashtags, isPremium, priceStars } = (request.body ?? {}) as {
       title?: string;
       description?: string;
       category?: string;
       hashtags?: string[];
+      isPremium?: boolean;
+      priceStars?: number;
     };
 
     const video = await prisma.video.findUnique({ where: { id } });
@@ -54,6 +69,11 @@ export async function uploadRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Video file was not uploaded yet" });
     }
 
+    const premium = parsePremiumFields({ isPremium, priceStars });
+    if (!premium.ok) {
+      return reply.code(400).send({ error: premium.error });
+    }
+
     await prisma.video.update({
       where: { id },
       data: {
@@ -61,6 +81,8 @@ export async function uploadRoutes(app: FastifyInstance) {
         description: description?.trim() || null,
         category: category ?? null,
         hashtags: Array.isArray(hashtags) ? hashtags.filter((h) => h.trim().length > 0) : [],
+        isPremium: premium.isPremium,
+        priceStars: premium.priceStars,
         status: "processing",
       },
     });
@@ -78,11 +100,13 @@ export async function uploadRoutes(app: FastifyInstance) {
   app.patch("/api/videos/:id", { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const userId = request.user.sub;
-    const { title, description, category, hashtags } = (request.body ?? {}) as {
+    const { title, description, category, hashtags, isPremium, priceStars } = (request.body ?? {}) as {
       title?: string;
       description?: string;
       category?: string;
       hashtags?: string[];
+      isPremium?: boolean;
+      priceStars?: number;
     };
 
     const video = await prisma.video.findUnique({ where: { id } });
@@ -93,6 +117,18 @@ export async function uploadRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: `Cannot edit a video with status ${video.status}` });
     }
 
+    // isPremium/priceStars are optional here — omitting both keeps the
+    // video's current premium state instead of resetting it to free, unlike
+    // /publish where every field is always provided from the upload form.
+    let premiumUpdate: { isPremium: boolean; priceStars: number | null } | undefined;
+    if (isPremium !== undefined || priceStars !== undefined) {
+      const premium = parsePremiumFields({ isPremium: isPremium ?? video.isPremium, priceStars });
+      if (!premium.ok) {
+        return reply.code(400).send({ error: premium.error });
+      }
+      premiumUpdate = premium;
+    }
+
     const updated = await prisma.video.update({
       where: { id },
       data: {
@@ -100,6 +136,7 @@ export async function uploadRoutes(app: FastifyInstance) {
         description: description?.trim() || null,
         category: category ?? video.category,
         hashtags: Array.isArray(hashtags) ? hashtags.filter((h) => h.trim().length > 0) : video.hashtags,
+        ...(premiumUpdate ?? {}),
       },
     });
 
@@ -109,6 +146,8 @@ export async function uploadRoutes(app: FastifyInstance) {
       description: updated.description,
       category: updated.category,
       hashtags: updated.hashtags,
+      isPremium: updated.isPremium,
+      priceStars: updated.priceStars,
     };
   });
 

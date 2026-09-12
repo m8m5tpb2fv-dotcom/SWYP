@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { X, ChevronDown, UserRound, Pencil } from "lucide-react";
 import { fetchUserProfile, fetchUserVideos, followUser, unfollowUser, type UserProfile } from "../lib/users";
-import type { FeedItem } from "../lib/feed";
+import { fetchVideoById, type FeedItem } from "../lib/feed";
+import { subscribeToCreator } from "../lib/monetization";
+import WebApp from "@twa-dev/sdk";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
 import VideoCard from "./VideoCard";
 import VideoActionBar from "./VideoActionBar";
@@ -30,6 +32,8 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
   const [editOpen, setEditOpen] = useState(false);
   const [editVideoOpen, setEditVideoOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +72,38 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
 
   const handleCommentCountChange = (videoId: string, delta: number) => {
     setVideos((prev) => prev.map((v) => (v.id === videoId ? { ...v, commentsCount: v.commentsCount + delta } : v)));
+  };
+
+  // Locked premium videos come back with videoUrl: null — re-fetch the item
+  // once Stars payment confirms so the (now-signed) real URL replaces it.
+  const handleUnlocked = (item: FeedItem) => {
+    fetchVideoById(item.id)
+      .then((updated) => {
+        setVideos((prev) => prev.map((v) => (v.id === updated.id ? updated : v)));
+      })
+      .catch(() => {});
+  };
+
+  const handleSubscribe = async () => {
+    if (subscribing) return;
+    setSubscribing(true);
+    setSubscribeError(null);
+    try {
+      const { invoiceUrl } = await subscribeToCreator(userId);
+      WebApp.openInvoice(invoiceUrl, (status) => {
+        setSubscribing(false);
+        if (status === "paid") {
+          fetchUserProfile(userId)
+            .then(setProfile)
+            .catch(() => {});
+        } else if (status === "failed") {
+          setSubscribeError("Платёж не прошёл");
+        }
+      });
+    } catch (err) {
+      setSubscribing(false);
+      setSubscribeError((err as Error).message);
+    }
   };
 
   return (
@@ -143,6 +179,30 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
                 {profile.isFollowing ? "Вы подписаны" : "Подписаться"}
               </button>
             )}
+
+            {!profile.isMe && profile.subscriptionPriceStars !== null && (
+              <div className="w-full max-w-xs">
+                {profile.isSubscribed ? (
+                  <p className="rounded-lg bg-white/10 py-2 text-center text-sm font-semibold text-white">
+                    🔒 Премиум-подписка активна
+                    {profile.subscriptionExpiresAt &&
+                      ` до ${new Date(profile.subscriptionExpiresAt).toLocaleDateString("ru-RU")}`}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSubscribe}
+                    disabled={subscribing}
+                    className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {subscribing
+                      ? "Открываем оплату…"
+                      : `🔒 Премиум-подписка · ${profile.subscriptionPriceStars}⭐ / 30 дней`}
+                  </button>
+                )}
+                {subscribeError && <p className="mt-1 text-center text-xs text-red-400">{subscribeError}</p>}
+              </div>
+            )}
           </div>
         )}
 
@@ -207,6 +267,7 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
             onOpenAuthor={() => {}}
             onDoubleTapLike={handleToggleLike}
             registerNode={() => {}}
+            onUnlocked={handleUnlocked}
           />
           <VideoActionBar
             item={videos[openIndex]}
@@ -236,8 +297,9 @@ export default function ProfileScreen({ userId, currentUserId, onClose }: Props)
       {editOpen && profile?.isMe && (
         <EditProfileSheet
           initialBio={profile.bio}
+          initialSubscriptionPriceStars={profile.subscriptionPriceStars}
           onClose={() => setEditOpen(false)}
-          onSaved={(bio) => setProfile((prev) => (prev ? { ...prev, bio } : prev))}
+          onSaved={(patch) => setProfile((prev) => (prev ? { ...prev, ...patch } : prev))}
         />
       )}
 

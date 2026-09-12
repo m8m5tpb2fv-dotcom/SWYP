@@ -14,6 +14,12 @@ export interface UserProfile {
   likesCount: number;
   isFollowing: boolean;
   isMe: boolean;
+  // Set only when this user offers subscriptions (creator side). isSubscribed/
+  // subscriptionExpiresAt describe the requester's own standing with them —
+  // both null/false when isMe (subscribing to yourself makes no sense).
+  subscriptionPriceStars: number | null;
+  isSubscribed: boolean;
+  subscriptionExpiresAt: string | null;
 }
 
 interface VideosPage {
@@ -42,12 +48,14 @@ export function unfollowUser(userId: string) {
   });
 }
 
-// Only bio is editable — username/name/avatar are synced from Telegram's own
-// profile on every login, so editing those in-app would just be overwritten
-// the next time the user opens the Mini App.
-export function updateMyBio(bio: string) {
-  return apiFetch<{ bio: string | null }>("/api/me", {
+// bio and subscriptionPriceStars are the only editable fields — username/name/
+// avatar sync from Telegram's own profile on every login, so editing those
+// in-app would just be overwritten next launch. subscriptionPriceStars is
+// omitted entirely to leave it unchanged, or passed as 0/null to turn
+// subscriptions off.
+export function updateMyProfile(payload: { bio: string; subscriptionPriceStars?: number | null }) {
+  return apiFetch<{ bio: string | null; subscriptionPriceStars: number | null }>("/api/me", {
     method: "PATCH",
-    body: JSON.stringify({ bio }),
+    body: JSON.stringify(payload),
   });
 }

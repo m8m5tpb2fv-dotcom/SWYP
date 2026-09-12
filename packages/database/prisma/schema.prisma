@@ -28,18 +28,69 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  videos         Video[]
-  likes          Like[]
-  comments       Comment[]
-  followers      Follow[]            @relation("Followers")
-  following      Follow[]            @relation("Following")
-  reports        Report[]
-  categoryScores UserCategoryScore[]
-  views          VideoView[]
-  giftsSent      GiftTransaction[]   @relation("GiftsSent")
-  giftsReceived  GiftTransaction[]   @relation("GiftsReceived")
+  // Null = this creator doesn't sell subscriptions. Set by the creator
+  // themselves (PATCH /api/me) — buying one is a flat, non-recurring 30-day
+  // pass (see CreatorSubscription) rather than Telegram's actual recurring
+  // Stars subscription API, which would need its own renewal-webhook
+  // lifecycle this codebase doesn't have yet.
+  subscriptionPriceStars Int?
+
+  videos              Video[]
+  likes               Like[]
+  comments            Comment[]
+  followers           Follow[]             @relation("Followers")
+  following           Follow[]             @relation("Following")
+  reports             Report[]
+  categoryScores      UserCategoryScore[]
+  views               VideoView[]
+  giftsSent           GiftTransaction[]    @relation("GiftsSent")
+  giftsReceived       GiftTransaction[]    @relation("GiftsReceived")
+  videoUnlocks        VideoUnlock[]
+  subscriptionsBought CreatorSubscription[] @relation("SubscriptionsBought")
+  subscriptionsSold   CreatorSubscription[] @relation("SubscriptionsSold")
 
   @@map("users")
+}
+
+// One-time Stars purchase unlocking a single premium video for one viewer,
+// permanently — separate from CreatorSubscription, which unlocks every
+// premium video from one creator but only for 30 days. A viewer might use
+// either path depending on whether they just want this one video or watch
+// that creator regularly.
+model VideoUnlock {
+  id               String   @id @default(uuid())
+  userId           String
+  videoId          String
+  priceStars       Int
+  telegramChargeId String?
+  createdAt        DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@index([videoId])
+  @@map("video_unlocks")
+}
+
+// A flat-rate, non-renewing 30-day pass to one creator's premium videos,
+// bought with Stars. Access is just `expiresAt > now()` — re-subscribing
+// after expiry is a brand new payment, not an automatic renewal.
+model CreatorSubscription {
+  id               String   @id @default(uuid())
+  subscriberId     String
+  creatorId        String
+  priceStars       Int
+  expiresAt        DateTime
+  telegramChargeId String?
+  createdAt        DateTime @default(now())
+
+  subscriber User @relation("SubscriptionsBought", fields: [subscriberId], references: [id], onDelete: Cascade)
+  creator    User @relation("SubscriptionsSold", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([subscriberId])
+  @@index([creatorId])
+  @@map("creator_subscriptions")
 }
 
 // Long-press the like button on a video -> buy the author a real Telegram
@@ -161,6 +212,12 @@ model Video {
   savesCount    Int         @default(0)
   reportsCount  Int         @default(0)
 
+  // Exclusive Shorts: priceStars is only meaningful when isPremium is true.
+  // A viewer can unlock it individually (VideoUnlock) or already hold an
+  // active CreatorSubscription to this video's author — either grants access.
+  isPremium  Boolean @default(false)
+  priceStars Int?
+
   // Recommendation inputs (ТЗ раздел 5/21/25) — watchTimeSum/completedViewsCount are
   // aggregated from video_watch events by the analytics worker; score is recomputed
   // from all of the above whenever any of them changes.
@@ -178,6 +235,7 @@ model Video {
   reports  Report[]
   views    VideoView[]
   gifts    GiftTransaction[]
+  unlocks  VideoUnlock[]
 
   @@index([userId])
   @@index([status])

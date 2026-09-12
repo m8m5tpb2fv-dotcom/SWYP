@@ -6,7 +6,14 @@ import type { FeedItem } from "../lib/feed";
 interface Props {
   video: FeedItem;
   onClose: () => void;
-  onSaved: (patch: { title: string | null; description: string | null; category: string | null; hashtags: string[] }) => void;
+  onSaved: (patch: {
+    title: string | null;
+    description: string | null;
+    category: string | null;
+    hashtags: string[];
+    isPremium: boolean;
+    priceStars: number | null;
+  }) => void;
 }
 
 export default function EditVideoSheet({ video, onClose, onSaved }: Props) {
@@ -14,11 +21,17 @@ export default function EditVideoSheet({ video, onClose, onSaved }: Props) {
   const [description, setDescription] = useState(video.description ?? "");
   const [hashtags, setHashtags] = useState(video.hashtags.join(" "));
   const [category, setCategory] = useState(video.category ?? CATEGORIES[0].value);
+  const [isPremium, setIsPremium] = useState(video.isPremium);
+  const [priceStars, setPriceStars] = useState(video.priceStars ? String(video.priceStars) : "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (pending) return;
+    if (isPremium && !(Number(priceStars) >= 1)) {
+      setError("Укажите цену в звёздах для эксклюзивного видео");
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -30,6 +43,8 @@ export default function EditVideoSheet({ video, onClose, onSaved }: Props) {
           .split(/[\s,#]+/)
           .map((h) => h.trim())
           .filter(Boolean),
+        isPremium,
+        priceStars: isPremium ? Number(priceStars) : undefined,
       });
       onSaved(result);
       onClose();
@@ -83,6 +98,25 @@ export default function EditVideoSheet({ video, onClose, onSaved }: Props) {
               </option>
             ))}
           </select>
+
+          <label className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5">
+            <span className="text-sm">Эксклюзивный Short (платный)</span>
+            <input
+              type="checkbox"
+              checked={isPremium}
+              onChange={(e) => setIsPremium(e.target.checked)}
+              className="h-5 w-5 accent-blue-500"
+            />
+          </label>
+          {isPremium && (
+            <input
+              value={priceStars}
+              onChange={(e) => setPriceStars(e.target.value.replace(/\D/g, ""))}
+              placeholder="Цена в звёздах, например 50"
+              inputMode="numeric"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-base outline-none focus:border-blue-400"
+            />
+          )}
 
           {error && <p className="text-xs text-red-500">{error}</p>}
 

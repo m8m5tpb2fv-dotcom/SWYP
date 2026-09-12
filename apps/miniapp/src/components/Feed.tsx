@@ -6,7 +6,7 @@ import TopNav from "./TopNav";
 import CommentsSheet from "./CommentsSheet";
 import ReportSheet from "./ReportSheet";
 import GiftPickerSheet from "./GiftPickerSheet";
-import { fetchFeed, type FeedItem } from "../lib/feed";
+import { fetchFeed, fetchVideoById, type FeedItem } from "../lib/feed";
 import { useVideoInteractions } from "../lib/useVideoInteractions";
 import { sendImpression, sendWatch } from "../lib/events";
 
@@ -182,6 +182,16 @@ export default function Feed({
     setItems((prev) => prev.map((v) => (v.id === videoId ? { ...v, commentsCount: v.commentsCount + delta } : v)));
   }, []);
 
+  // Locked premium videos come back with videoUrl: null — re-fetch the item
+  // once Stars payment confirms so the (now-signed) real URL replaces it.
+  const handleUnlocked = useCallback((item: FeedItem) => {
+    fetchVideoById(item.id)
+      .then((updated) => {
+        setItems((prev) => prev.map((v) => (v.id === updated.id ? updated : v)));
+      })
+      .catch(() => {});
+  }, []);
+
   // Own-profile access needs to work even with an empty/loading feed (no
   // VideoActionBar to hold its icon then) — a plain right swipe anywhere on
   // this screen opens it, on top of the icon already in the action bar.
@@ -249,6 +259,7 @@ export default function Feed({
                 onOpenAuthor={handleOpenAuthor}
                 onDoubleTapLike={handleToggleLike}
                 registerNode={(node) => setNodeRef(item.id, node)}
+                onUnlocked={handleUnlocked}
               />
             );
           })}

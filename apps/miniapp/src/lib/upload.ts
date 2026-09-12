@@ -51,6 +51,10 @@ export interface PublishPayload {
   description?: string;
   category?: string;
   hashtags?: string[];
+  // isPremium: false (or omitted) publishes/keeps the video free; true
+  // requires priceStars (1-100000) — see parsePremiumFields on the API side.
+  isPremium?: boolean;
+  priceStars?: number;
 }
 
 export function publishVideo(videoId: string, payload: PublishPayload) {
@@ -66,6 +70,8 @@ export interface UpdateVideoResult {
   description: string | null;
   category: string | null;
   hashtags: string[];
+  isPremium: boolean;
+  priceStars: number | null;
 }
 
 // Editing an already-published video's info — separate from publishVideo,

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@swyp/database";
 import { authenticate } from "../plugins/authenticate.js";
-import { toFeedItem } from "../serializers.js";
+import { toFeedItem, getActiveSubscribedCreatorIds } from "../serializers.js";
 import { parseLimit } from "../pagination.js";
 
 // Candidate-pool + re-rank personalization: pull the top POOL_LIMIT globally-
@@ -30,19 +30,23 @@ export async function feedRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const userId = request.user.sub;
 
-    const video = await prisma.video.findUnique({
-      where: { id },
-      include: {
-        user: true,
-        likes: { where: { userId }, select: { id: true }, take: 1 },
-      },
-    });
+    const [video, subscribedCreatorIds] = await Promise.all([
+      prisma.video.findUnique({
+        where: { id },
+        include: {
+          user: true,
+          likes: { where: { userId }, select: { id: true }, take: 1 },
+          unlocks: { where: { userId }, select: { id: true }, take: 1 },
+        },
+      }),
+      getActiveSubscribedCreatorIds(userId),
+    ]);
 
     if (!video || video.status !== "published") {
       return reply.code(404).send({ error: "Video not found" });
     }
 
-    return toFeedItem(video);
+    return toFeedItem(video, userId, subscribedCreatorIds);
   });
 
   app.get("/api/feed", { preHandler: authenticate }, async (request) => {
@@ -52,7 +56,7 @@ export async function feedRoutes(app: FastifyInstance) {
 
     const offset = cursor ? Math.max(0, parseInt(cursor, 10) || 0) : 0;
 
-    const [candidates, affinityRows, followedRows] = await Promise.all([
+    const [candidates, affinityRows, followedRows, subscribedCreatorIds] = await Promise.all([
       prisma.video.findMany({
         where: { status: "published", ...(category ? { category } : {}) },
         orderBy: [{ score: "desc" }, { createdAt: "desc" }, { id: "desc" }],
@@ -60,10 +64,12 @@ export async function feedRoutes(app: FastifyInstance) {
         include: {
           user: true,
           likes: { where: { userId }, select: { id: true }, take: 1 },
+          unlocks: { where: { userId }, select: { id: true }, take: 1 },
         },
       }),
       prisma.userCategoryScore.findMany({ where: { userId }, select: { category: true, score: true } }),
       prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } }),
+      getActiveSubscribedCreatorIds(userId),
     ]);
 
     const affinityByCategory = new Map(affinityRows.map((r) => [r.category, r.score]));
@@ -86,7 +92,7 @@ export async function feedRoutes(app: FastifyInstance) {
     const hasMore = offset + limit < ranked.length;
 
     return {
-      items: await Promise.all(page.map(toFeedItem)),
+      items: await Promise.all(page.map((v) => toFeedItem(v, userId, subscribedCreatorIds))),
       next_cursor: hasMore ? String(offset + limit) : null,
     };
   });

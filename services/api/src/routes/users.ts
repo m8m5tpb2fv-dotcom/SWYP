@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@swyp/database";
 import { authenticate } from "../plugins/authenticate.js";
-import { toFeedItem } from "../serializers.js";
+import { toFeedItem, getActiveSubscribedCreatorIds } from "../serializers.js";
 import { parseLimit } from "../pagination.js";
 
 export async function userRoutes(app: FastifyInstance) {
@@ -16,7 +16,7 @@ export async function userRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "User not found" });
     }
 
-    const [followersCount, followingCount, videosCount, likesAgg, followRow] = await Promise.all([
+    const [followersCount, followingCount, videosCount, likesAgg, followRow, activeSubscription] = await Promise.all([
       prisma.follow.count({ where: { followingId: id } }),
       prisma.follow.count({ where: { followerId: id } }),
       prisma.video.count({ where: { userId: id, status: "published" } }),
@@ -25,6 +25,13 @@ export async function userRoutes(app: FastifyInstance) {
         ? null
         : prisma.follow.findUnique({
             where: { followerId_followingId: { followerId: requesterId, followingId: id } },
+          }),
+      id === requesterId
+        ? null
+        : prisma.creatorSubscription.findFirst({
+            where: { subscriberId: requesterId, creatorId: id, expiresAt: { gt: new Date() } },
+            orderBy: { expiresAt: "desc" },
+            select: { expiresAt: true },
           }),
     ]);
 
@@ -41,6 +48,9 @@ export async function userRoutes(app: FastifyInstance) {
       likesCount: likesAgg._sum.likesCount ?? 0,
       isFollowing: followRow !== null,
       isMe: id === requesterId,
+      subscriptionPriceStars: user.subscriptionPriceStars,
+      isSubscribed: activeSubscription !== null,
+      subscriptionExpiresAt: activeSubscription?.expiresAt ?? null,
     };
   });
 
@@ -50,22 +60,26 @@ export async function userRoutes(app: FastifyInstance) {
     const limit = parseLimit((request.query as { limit?: string }).limit, 12, 30);
     const requesterId = request.user.sub;
 
-    const videos = await prisma.video.findMany({
-      where: { userId: id, status: "published" },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      include: {
-        user: true,
-        likes: { where: { userId: requesterId }, select: { id: true }, take: 1 },
-      },
-    });
+    const [videos, subscribedCreatorIds] = await Promise.all([
+      prisma.video.findMany({
+        where: { userId: id, status: "published" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        include: {
+          user: true,
+          likes: { where: { userId: requesterId }, select: { id: true }, take: 1 },
+          unlocks: { where: { userId: requesterId }, select: { id: true }, take: 1 },
+        },
+      }),
+      getActiveSubscribedCreatorIds(requesterId),
+    ]);
 
     const hasMore = videos.length > limit;
     const items = videos.slice(0, limit);
 
     return {
-      items: await Promise.all(items.map(toFeedItem)),
+      items: await Promise.all(items.map((v) => toFeedItem(v, requesterId, subscribedCreatorIds))),
       next_cursor: hasMore ? items[items.length - 1].id : null,
     };
   });

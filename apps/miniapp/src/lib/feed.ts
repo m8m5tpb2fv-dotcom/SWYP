@@ -16,6 +16,12 @@ export interface FeedItem {
   hashtags: string[];
   videoUrl: string | null;
   thumbnailUrl: string | null;
+  // isPremium videos withhold videoUrl (null, even though thumbnailUrl still
+  // signs as a teaser) until isUnlocked — either a VideoUnlock purchase, an
+  // active CreatorSubscription to the author, or the viewer being the author.
+  isPremium: boolean;
+  priceStars: number | null;
+  isUnlocked: boolean;
   duration: number | null;
   viewsCount: number;
   likesCount: number;

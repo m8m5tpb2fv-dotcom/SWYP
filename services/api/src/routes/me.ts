@@ -12,12 +12,15 @@ export async function meRoutes(app: FastifyInstance) {
     return toPublicUser(user);
   });
 
-  // Only bio is editable here — username/firstName/lastName/avatarUrl are
-  // synced from Telegram's own profile on every login (see routes/auth.ts),
-  // so an edit to those would just be overwritten the next time the user
-  // opens the app.
+  // bio and subscriptionPriceStars are the only editable fields here —
+  // username/firstName/lastName/avatarUrl are synced from Telegram's own
+  // profile on every login (see routes/auth.ts), so an edit to those would
+  // just be overwritten the next time the user opens the app.
   app.patch("/api/me", { preHandler: authenticate }, async (request, reply) => {
-    const { bio } = (request.body ?? {}) as { bio?: string };
+    const { bio, subscriptionPriceStars } = (request.body ?? {}) as {
+      bio?: string;
+      subscriptionPriceStars?: number | null;
+    };
     if (typeof bio !== "string") {
       return reply.code(400).send({ error: "bio is required" });
     }
@@ -26,9 +29,25 @@ export async function meRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "bio must be 150 characters or fewer" });
     }
 
+    let priceUpdate: number | null | undefined;
+    if (subscriptionPriceStars !== undefined) {
+      if (subscriptionPriceStars === null || subscriptionPriceStars === 0) {
+        priceUpdate = null;
+      } else if (
+        typeof subscriptionPriceStars !== "number" ||
+        !Number.isInteger(subscriptionPriceStars) ||
+        subscriptionPriceStars < 1 ||
+        subscriptionPriceStars > 100000
+      ) {
+        return reply.code(400).send({ error: "subscriptionPriceStars must be an integer between 1 and 100000, or 0/null to disable" });
+      } else {
+        priceUpdate = subscriptionPriceStars;
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id: request.user.sub },
-      data: { bio: trimmed || null },
+      data: { bio: trimmed || null, ...(priceUpdate !== undefined ? { subscriptionPriceStars: priceUpdate } : {}) },
     });
     return toPublicUser(user);
   });

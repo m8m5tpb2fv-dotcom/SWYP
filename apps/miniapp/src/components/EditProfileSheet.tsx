@@ -1,26 +1,44 @@
 import { useState } from "react";
-import { updateMyBio } from "../lib/users";
+import { updateMyProfile } from "../lib/users";
 
 interface Props {
   initialBio: string | null;
+  // null = subscriptions currently off for this creator.
+  initialSubscriptionPriceStars: number | null;
   onClose: () => void;
-  onSaved: (bio: string | null) => void;
+  onSaved: (patch: { bio: string | null; subscriptionPriceStars: number | null }) => void;
 }
 
 const BIO_MAX_LENGTH = 150;
 
-export default function EditProfileSheet({ initialBio, onClose, onSaved }: Props) {
+export default function EditProfileSheet({
+  initialBio,
+  initialSubscriptionPriceStars,
+  onClose,
+  onSaved,
+}: Props) {
   const [bio, setBio] = useState(initialBio ?? "");
+  const [subscriptionEnabled, setSubscriptionEnabled] = useState(initialSubscriptionPriceStars !== null);
+  const [subscriptionPriceStars, setSubscriptionPriceStars] = useState(
+    initialSubscriptionPriceStars ? String(initialSubscriptionPriceStars) : "",
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (pending) return;
+    if (subscriptionEnabled && !(Number(subscriptionPriceStars) >= 1)) {
+      setError("Укажите цену подписки в звёздах");
+      return;
+    }
     setPending(true);
     setError(null);
     try {
-      const result = await updateMyBio(bio);
-      onSaved(result.bio);
+      const result = await updateMyProfile({
+        bio,
+        subscriptionPriceStars: subscriptionEnabled ? Number(subscriptionPriceStars) : null,
+      });
+      onSaved(result);
       onClose();
     } catch (err) {
       setError((err as Error).message);
@@ -52,8 +70,28 @@ export default function EditProfileSheet({ initialBio, onClose, onSaved }: Props
             <span className="text-xs text-gray-400">
               {bio.length}/{BIO_MAX_LENGTH}
             </span>
-            {error && <span className="text-xs text-red-500">{error}</span>}
           </div>
+
+          <label className="mt-4 flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5">
+            <span className="text-sm">Премиум-подписка на мой аккаунт</span>
+            <input
+              type="checkbox"
+              checked={subscriptionEnabled}
+              onChange={(e) => setSubscriptionEnabled(e.target.checked)}
+              className="h-5 w-5 accent-blue-500"
+            />
+          </label>
+          {subscriptionEnabled && (
+            <input
+              value={subscriptionPriceStars}
+              onChange={(e) => setSubscriptionPriceStars(e.target.value.replace(/\D/g, ""))}
+              placeholder="Цена за 30 дней, в звёздах"
+              inputMode="numeric"
+              className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-base outline-none focus:border-blue-400"
+            />
+          )}
+
+          {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
 
           <button
             type="button"

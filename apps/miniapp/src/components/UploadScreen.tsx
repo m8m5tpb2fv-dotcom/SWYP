@@ -22,6 +22,8 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0].value);
   const [hashtags, setHashtags] = useState("");
+  const [isPremium, setIsPremium] = useState(false);
+  const [priceStars, setPriceStars] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(
@@ -49,6 +51,10 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
 
   const handlePublish = async () => {
     if (stage.kind !== "form") return;
+    if (isPremium && !(Number(priceStars) >= 1)) {
+      setStage({ kind: "error", message: "Укажите цену в звёздах для эксклюзивного видео" });
+      return;
+    }
     const { videoId } = stage;
     setStage({ kind: "publishing", videoId });
     try {
@@ -60,6 +66,8 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
           .split(/[\s,#]+/)
           .map((h) => h.trim())
           .filter(Boolean),
+        isPremium,
+        priceStars: isPremium ? Number(priceStars) : undefined,
       });
       setStage({ kind: "processing", videoId });
       pollRef.current = setInterval(async () => {
@@ -150,6 +158,26 @@ export default function UploadScreen({ onClose, onPublished }: Props) {
                 </option>
               ))}
             </select>
+
+            <label className="flex items-center justify-between rounded-lg bg-white/10 px-3 py-2.5">
+              <span className="text-sm">Эксклюзивный Short (платный)</span>
+              <input
+                type="checkbox"
+                checked={isPremium}
+                onChange={(e) => setIsPremium(e.target.checked)}
+                className="h-5 w-5 accent-blue-500"
+              />
+            </label>
+            {isPremium && (
+              <input
+                value={priceStars}
+                onChange={(e) => setPriceStars(e.target.value.replace(/\D/g, ""))}
+                placeholder="Цена в звёздах, например 50"
+                inputMode="numeric"
+                className="w-full rounded-lg bg-white/10 px-3 py-2 text-base placeholder:text-white/40"
+              />
+            )}
+
             <button
               type="button"
               onClick={handlePublish}

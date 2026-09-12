@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { TouchEvent as ReactTouchEvent } from "react";
-import { Eye, Heart, Play, UserRound } from "lucide-react";
+import { Eye, Heart, Lock, Play, UserRound } from "lucide-react";
+import WebApp from "@twa-dev/sdk";
 import type { FeedItem } from "../lib/feed";
 import { formatCount } from "../lib/format";
+import { unlockVideo } from "../lib/monetization";
 
 interface Props {
   item: FeedItem;
@@ -15,6 +17,10 @@ interface Props {
   // heart animation without calling the API again.
   onDoubleTapLike?: (item: FeedItem) => void;
   registerNode: (node: HTMLDivElement | null) => void;
+  // Fired once a locked premium video's unlock payment is confirmed —
+  // videoUrl came back null while locked, so the parent re-fetches the item
+  // to get the real, now-signed URL instead of this card trying to play one.
+  onUnlocked?: (item: FeedItem) => void;
 }
 
 const DOUBLE_TAP_WINDOW_MS = 300;
@@ -35,8 +41,11 @@ export default function VideoCard({
   onOpenAuthor,
   onDoubleTapLike,
   registerNode,
+  onUnlocked,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
   // Tracks the <video>'s actual paused state (via its own play/pause events,
   // not just the tap handler) so the overlay icon also shows up correctly
   // when playback is blocked by autoplay policy or paused by the active-card
@@ -145,6 +154,27 @@ export default function VideoCard({
   };
 
   const authorLabel = item.author.username ?? item.author.firstName ?? "автор";
+  const locked = item.isPremium && !item.isUnlocked;
+
+  const handleUnlock = async () => {
+    if (unlocking) return;
+    setUnlocking(true);
+    setUnlockError(null);
+    try {
+      const { invoiceUrl } = await unlockVideo(item.id);
+      WebApp.openInvoice(invoiceUrl, (status) => {
+        setUnlocking(false);
+        if (status === "paid") {
+          onUnlocked?.(item);
+        } else if (status === "failed") {
+          setUnlockError("Платёж не прошёл");
+        }
+      });
+    } catch (err) {
+      setUnlocking(false);
+      setUnlockError((err as Error).message);
+    }
+  };
 
   return (
     <div
@@ -152,31 +182,60 @@ export default function VideoCard({
       data-video-id={item.id}
       className="relative h-full w-full shrink-0 snap-start bg-black"
     >
-      <video
-        ref={videoRef}
-        src={item.videoUrl ?? undefined}
-        poster={item.thumbnailUrl ?? undefined}
-        className="h-full w-full object-contain"
-        playsInline
-        loop
-        muted={muted}
-        preload={preload}
-        onClick={handleTap}
-        onTouchStart={handleVideoTouchStart}
-        onTouchMove={handleVideoTouchMove}
-        onPlay={() => setPaused(false)}
-        onPause={() => setPaused(true)}
-      />
+      {locked ? (
+        <>
+          {item.thumbnailUrl && (
+            <img
+              src={item.thumbnailUrl}
+              alt=""
+              className="h-full w-full scale-110 object-cover opacity-40 blur-2xl"
+            />
+          )}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/30 px-8 text-center text-white">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10">
+              <Lock size={24} strokeWidth={2} />
+            </div>
+            <p className="text-sm font-semibold">Эксклюзивный Short</p>
+            <button
+              type="button"
+              onClick={handleUnlock}
+              disabled={unlocking}
+              className="rounded-full bg-blue-500 px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
+            >
+              {unlocking ? "Открываем…" : `Открыть за ${item.priceStars} ⭐`}
+            </button>
+            {unlockError && <p className="text-xs text-red-400">{unlockError}</p>}
+          </div>
+        </>
+      ) : (
+        <video
+          ref={videoRef}
+          src={item.videoUrl ?? undefined}
+          poster={item.thumbnailUrl ?? undefined}
+          className="h-full w-full object-contain"
+          playsInline
+          loop
+          muted={muted}
+          preload={preload}
+          onClick={handleTap}
+          onTouchStart={handleVideoTouchStart}
+          onTouchMove={handleVideoTouchMove}
+          onPlay={() => setPaused(false)}
+          onPause={() => setPaused(true)}
+        />
+      )}
 
-      <div
-        className={`pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-          paused ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#2AABEE] shadow-xl">
-          <Play size={28} strokeWidth={0} fill="white" />
+      {!locked && (
+        <div
+          className={`pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+            paused ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#2AABEE] shadow-xl">
+            <Play size={28} strokeWidth={0} fill="white" />
+          </div>
         </div>
-      </div>
+      )}
 
       {showLikeAnim && (
         <div key={likeAnimKey} className="pointer-events-none absolute inset-0 flex items-center justify-center">

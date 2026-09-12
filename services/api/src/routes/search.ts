@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@swyp/database";
 import { authenticate } from "../plugins/authenticate.js";
-import { toFeedItem, toAuthor } from "../serializers.js";
+import { toFeedItem, toAuthor, getActiveSubscribedCreatorIds } from "../serializers.js";
 
 // MVP search per ТЗ раздел 12: ILIKE over title/description/username, plus a
 // hashtag aggregate via unnest — full-text search / Elasticsearch is future scope.
@@ -15,7 +15,7 @@ export async function searchRoutes(app: FastifyInstance) {
 
     const userId = request.user.sub;
 
-    const [videos, users, hashtagRows] = await Promise.all([
+    const [videos, users, hashtagRows, subscribedCreatorIds] = await Promise.all([
       prisma.video.findMany({
         where: {
           status: "published",
@@ -29,6 +29,7 @@ export async function searchRoutes(app: FastifyInstance) {
         include: {
           user: true,
           likes: { where: { userId }, select: { id: true }, take: 1 },
+          unlocks: { where: { userId }, select: { id: true }, take: 1 },
         },
       }),
       prisma.user.findMany({
@@ -49,10 +50,11 @@ export async function searchRoutes(app: FastifyInstance) {
         ORDER BY count DESC
         LIMIT 10
       `,
+      getActiveSubscribedCreatorIds(userId),
     ]);
 
     return {
-      videos: await Promise.all(videos.map(toFeedItem)),
+      videos: await Promise.all(videos.map((v) => toFeedItem(v, userId, subscribedCreatorIds))),
       users: users.map(toAuthor),
       hashtags: hashtagRows.map((r) => ({ tag: r.tag, count: Number(r.count) })),
     };

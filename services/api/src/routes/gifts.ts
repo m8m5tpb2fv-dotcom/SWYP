@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { prisma } from "@swyp/database";
 import { requireEnv } from "@swyp/config";
 import { authenticate } from "../plugins/authenticate.js";
+import { callTelegram, createStarsInvoice } from "../telegram-api.js";
 
 interface TelegramSticker {
   file_id: string;
@@ -19,18 +20,6 @@ interface TelegramGift {
   star_count: number;
   remaining_count?: number;
   total_count?: number;
-}
-
-async function callTelegram<T>(method: string, body?: Record<string, unknown>): Promise<T> {
-  const token = requireEnv("TELEGRAM_BOT_TOKEN");
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = (await res.json()) as { ok: boolean; result?: T; description?: string };
-  if (!data.ok) throw new Error(data.description ?? `Telegram API ${method} failed`);
-  return data.result as T;
 }
 
 // Long-press the like button -> buy the author a real Telegram Gift with
@@ -129,15 +118,11 @@ export async function giftRoutes(app: FastifyInstance) {
       },
     });
 
-    // provider_token is deliberately "" — Telegram Stars payments (currency
-    // XTR) don't go through a real payment provider.
-    const invoiceUrl = await callTelegram<string>("createInvoiceLink", {
+    const invoiceUrl = await createStarsInvoice({
       title: "Подарок в SWYP",
       description: "Подарок автору видео",
       payload: `giftTx:${transaction.id}`,
-      provider_token: "",
-      currency: "XTR",
-      prices: [{ label: "Подарок", amount: gift.star_count }],
+      starCount: gift.star_count,
     });
 
     return { transactionId: transaction.id, invoiceUrl };
