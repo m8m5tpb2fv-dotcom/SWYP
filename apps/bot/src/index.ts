@@ -47,6 +47,7 @@ bot.command("help", async (ctx) => {
 const GIFT_PAYLOAD_PREFIX = "giftTx:";
 const VIDEO_UNLOCK_PAYLOAD_PREFIX = "videoUnlock:";
 const SUBSCRIBE_PAYLOAD_PREFIX = "subscribe:";
+const VERIFY_PAYLOAD_PREFIX = "verify:";
 // Kept in sync with services/api/src/routes/monetization.ts's SUBSCRIPTION_DAYS —
 // separate deployable services, no shared import between them.
 const SUBSCRIPTION_DAYS = 30;
@@ -85,6 +86,17 @@ bot.on("pre_checkout_query", async (ctx) => {
     const creator = await prisma.user.findUnique({ where: { id: creatorId } });
     if (!creator || !creator.subscriptionPriceStars) {
       await ctx.answerPreCheckoutQuery(false, { error_message: "Подписка больше недоступна" });
+      return;
+    }
+    await ctx.answerPreCheckoutQuery(true);
+    return;
+  }
+
+  if (payload.startsWith(VERIFY_PAYLOAD_PREFIX)) {
+    const userId = payload.slice(VERIFY_PAYLOAD_PREFIX.length);
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.isVerified) {
+      await ctx.answerPreCheckoutQuery(false, { error_message: "Аккаунт уже подтверждён или не найден" });
       return;
     }
     await ctx.answerPreCheckoutQuery(true);
@@ -161,6 +173,16 @@ bot.on("message:successful_payment", async (ctx) => {
     return;
   }
 
+  if (payload.startsWith(VERIFY_PAYLOAD_PREFIX)) {
+    const userId = payload.slice(VERIFY_PAYLOAD_PREFIX.length);
+    // Idempotent by construction: the API's own /api/me/verify refuses to
+    // mint a second invoice once isVerified is true, and setting it again
+    // here for a redelivered update is harmless either way.
+    await prisma.user.update({ where: { id: userId }, data: { isVerified: true } });
+    await ctx.reply("✅ Аккаунт подтверждён! Значок появится в приложении.");
+    return;
+  }
+
   if (!payload.startsWith(GIFT_PAYLOAD_PREFIX)) return;
 
   const tx = await prisma.giftTransaction.findUnique({
@@ -179,7 +201,8 @@ bot.on("message:successful_payment", async (ctx) => {
     await prisma.giftTransaction.update({ where: { id: tx.id }, data: { status: "delivered" } });
 
     await ctx.reply("🎁 Подарок отправлен!");
-    const purchaserLabel = tx.purchaser.username ? `@${tx.purchaser.username}` : tx.purchaser.firstName ?? "Кто-то";
+    const purchaserLabel =
+      tx.purchaser.nickname ?? (tx.purchaser.username ? `@${tx.purchaser.username}` : tx.purchaser.firstName) ?? "Кто-то";
     await bot.api
       .sendMessage(Number(tx.recipient.telegramId), `🎁 ${purchaserLabel} подарил(а) вам подарок в SWYP!`)
       .catch(() => {
